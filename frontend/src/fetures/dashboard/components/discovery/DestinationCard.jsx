@@ -18,7 +18,7 @@ const DestinationCard = ({ destination, index, onAdd, onOpenDetails }) => {
           alt={destination.name}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-        <div className="absolute top-3 right-3">
+        {/* <div className="absolute top-3 right-3">
           <motion.button
             type="button"
             onClick={(event) => {
@@ -31,7 +31,7 @@ const DestinationCard = ({ destination, index, onAdd, onOpenDetails }) => {
           >
             <Plus size={18} />
           </motion.button>
-        </div>
+        </div> */}
         <div className="absolute bottom-3 left-3 flex gap-1.5">
           {destination.tags.map(tag => (
             <span key={tag} className="px-2.5 py-0.5 backdrop-blur-md bg-white/20 text-white text-[10px] font-bold rounded-full border border-white/20 uppercase">

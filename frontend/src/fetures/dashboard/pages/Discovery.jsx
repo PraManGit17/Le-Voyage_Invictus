@@ -16,10 +16,51 @@ const Discovery = () => {
 
   // const [results] = useState(discoveryItineraries);
 
-  const [results, setResults] = useState(discoveryItineraries);
+  // const [results, setResults] = useState(discoveryItineraries);
+  const [results, setResults] = useState(() => {
+    const stored = localStorage.getItem("aiDiscoveryResults");
+    return stored ? JSON.parse(stored) : discoveryItineraries;
+  });
+
+  const [isAiResults, setIsAiResults] = useState(() => {
+    return !!localStorage.getItem("aiDiscoveryResults");
+  });
 
   const categories = ["All", "Nature", "Culture", "Adventure", "Heritage", "Nightlife", "Scenic"];
 
+
+  // const fetchTravelIdeas = async (query) => {
+  //   try {
+  //     const res = await fetch("http://localhost:5000/api/ai/travel-ideas", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json"
+  //       },
+  //       body: JSON.stringify({ query })
+  //     });
+
+  //     const data = await res.json();
+
+  //     if (!data?.ideas) return;
+
+  //     const mapped = data.ideas.map((idea, index) => ({
+  //       id: index + 1,
+  //       name: idea.title,
+  //       summary: idea.description,
+  //       location: data.destination,
+  //       tags: [idea.theme],
+  //       image: `https://source.unsplash.com/800x600/?${idea.theme},${data.destination},travel`,
+  //       rating: 4.7,
+  //       price: "",
+  //       days: new Array(parseInt(idea.estimatedDays) || 2).fill({ places: [] })
+  //     }));
+
+  //     setResults(mapped);
+
+  //   } catch (err) {
+  //     console.error("AI search failed", err);
+  //   }
+  // };
 
   const fetchTravelIdeas = async (query) => {
     try {
@@ -35,23 +76,41 @@ const Discovery = () => {
 
       if (!data?.ideas) return;
 
+      // const mapped = data.ideas.map((idea, index) => ({
+      //   id: index + 1,
+      //   name: idea.title,
+      //   summary: idea.description,
+      //   location: data.destination,
+      //   tags: [idea.theme.toUpperCase()],
+      //   image: `https://source.unsplash.com/800x600/?${idea.theme},${data.destination},travel`,
+      //   days: new Array(parseInt(idea.estimatedDays) || 2).fill({ places: [] })
+      // }));
+
       const mapped = data.ideas.map((idea, index) => ({
         id: index + 1,
         name: idea.title,
         summary: idea.description,
         location: data.destination,
-        tags: [idea.theme],
-        image: `https://source.unsplash.com/800x600/?${data.destination},travel`,
-        rating: 4.7,
-        price: "",
+        tags: [idea.theme.toUpperCase()],
+        image: `https://loremflickr.com/800/600/${idea.imageKeyword}`,
         days: new Array(parseInt(idea.estimatedDays) || 2).fill({ places: [] })
       }));
 
       setResults(mapped);
+      setIsAiResults(true);
+
+      localStorage.setItem("aiDiscoveryResults", JSON.stringify(mapped));
 
     } catch (err) {
       console.error("AI search failed", err);
     }
+  };
+
+  const clearSearch = () => {
+    localStorage.removeItem("aiDiscoveryResults");
+
+    setResults(discoveryItineraries);
+    setIsAiResults(false);
   };
 
   const filtered = results.filter((dest) => {
@@ -75,7 +134,7 @@ const Discovery = () => {
   const featured = [...results].sort((a, b) => b.rating - a.rating)[0];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4">
       <header className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
         <div>
           <motion.div
@@ -110,12 +169,15 @@ const Discovery = () => {
       <div className="mb-10">
         {/* <AgenticSearchBar />
          */}
-
-        <AgenticSearchBar onSearch={fetchTravelIdeas} />
+        <AgenticSearchBar
+          onSearch={fetchTravelIdeas}
+          onClear={clearSearch}
+          isAiResults={isAiResults}
+        />
       </div>
 
       {/* Featured Itinerary Banner */}
-      {featured && (
+      {/* {featured && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -138,8 +200,9 @@ const Discovery = () => {
             </div>
           </div>
         </motion.div>
-      )}
+      )} */}
 
+    
       <div className="flex items-center gap-3 mb-8 overflow-x-auto pb-3 no-scrollbar">
         <div className="p-2.5 bg-slate-100 rounded-xl text-slate-400 shrink-0">
           <Filter size={18} />
@@ -156,10 +219,10 @@ const Discovery = () => {
             {cat}
           </button>
         ))}
-      </div>
+      </div> 
 
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-slate-400 font-medium">{filtered.length} itineraries found</p>
+        <p className="text-sm text-slate-400 font-medium">{filtered.length} Plans found</p>
       </div>
 
       <motion.div
@@ -173,7 +236,19 @@ const Discovery = () => {
               destination={dest}
               index={index}
               onAdd={() => setIsModalOpen(true)}
-              onOpenDetails={() => navigate(`/discovery/${dest.id}`)}
+              // onOpenDetails={() => navigate(`/discovery/${dest.id}`)}
+
+              onOpenDetails={() =>
+                navigate(`/discovery/${dest.id}`, {
+                  state: {
+                    destination: dest.location,
+                    image : dest.image,
+                    title: dest.name,
+                    description: dest.summary,
+                    theme: dest.tags[0]
+                  }
+                })
+              }
             />
           ))}
         </AnimatePresence>

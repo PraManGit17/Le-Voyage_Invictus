@@ -88,6 +88,9 @@ const generateTravelIdeas = async (req, res) => {
       apiKey: process.env.GROQ_API_KEY
     });
 
+
+
+
     const prompt = `
 User searched: "${query}"
 
@@ -99,18 +102,15 @@ heritage, food, adventure, nightlife, nature, culture.
 Return ONLY JSON in this format:
 
 {
- "destination": "city or place",
+ "destination": "city",
  "ideas":[
   {
-   "title":"Travel theme title",
+   "title":"Travel idea title",
    "description":"Short engaging description",
-   "theme":"heritage/food/adventure/nature/etc",
-   "estimatedDays":"1-3 days",
-   "highlights":[
-     "place1",
-     "place2",
-     "place3"
-   ]
+   "theme":"heritage/food/adventure/nature",
+   "estimatedDays":"1-3",
+   "imageKeyword":"single iconic landmark or item",
+   "highlights":["place1","place2","place3"]
   }
  ]
 }
@@ -118,9 +118,22 @@ Return ONLY JSON in this format:
 Rules:
 - Generate exactly 3 ideas
 - Titles should sound like travel experiences
-- Make them exciting and clickable
-- Keep description under 25 words
+- Description under 50 words, describe the plan, the place with emotions, travel exceitment
+- imageKeyword MUST be a single iconic landmark, food item, or place
+- Do NOT include spaces
+- Use PascalCase format
+
+Examples:
+
+Mumbai heritage → GatewayOfIndia  
+Mumbai food → VadaPav  
+Mumbai nightlife → MarineDrive  
+Jaipur heritage → HawaMahal  
+Delhi culture → IndiaGate  
+
+imageKeyword must be visually recognizable.
 `;
+
 
     const completion = await groq.chat.completions.create({
       messages: [{ role: "user", content: prompt }],
