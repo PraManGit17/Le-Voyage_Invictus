@@ -11,7 +11,7 @@ const Sidebar = () => {
   const menuItems = [
     { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/dashboard' },
     { icon: <Compass size={20} />, label: 'Discovery', path: '/discovery' },
-    { icon: <Users size={20} />, label: 'Group Trips', path: '/groups' },
+    { icon: <Users size={20} />, label: 'Travel Workspace', path: '/workspace' },
   ];
 
   return (

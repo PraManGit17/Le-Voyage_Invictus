@@ -1,1 +1,33 @@
 @import "tailwindcss";
+
+
+/* Hide scrollbar but keep scrolling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Edge */
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and old Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+
+.playfair-display {
+  font-family: "Playfair Display", serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.inter {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.bebas-neue {
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}

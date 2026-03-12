@@ -9,6 +9,7 @@ import ItineraryDetails from './fetures/dashboard/pages/ItineraryDetails';
 import GroupTrips from './fetures/dashboard/pages/GroupTrips';
 import GroupTripDetail from './fetures/dashboard/pages/GroupTripDetail';
 import DashboardLayout from './fetures/dashboard/layouts/DashboardLayout';
+import Workspace from './fetures/dashboard/pages/Workspace';
 
 const App = () => {
   return (
@@ -53,10 +54,10 @@ const App = () => {
       />
 
       <Route
-        path="/groups"
+        path="/workspace"
         element={
           <DashboardLayout>
-            <GroupTrips />
+            <Workspace />
           </DashboardLayout>
         }
       />
