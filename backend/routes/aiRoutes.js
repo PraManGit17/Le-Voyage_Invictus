@@ -5,3 +5,4 @@ const { getTopAttractions } = require("../controllers/aiController");
 router.post("/attractions", getTopAttractions);
 
 module.exports = router;
+//hi
