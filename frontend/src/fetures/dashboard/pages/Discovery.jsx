@@ -14,9 +14,45 @@ const Discovery = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("All");
 
-  const [results] = useState(discoveryItineraries);
+  // const [results] = useState(discoveryItineraries);
+
+  const [results, setResults] = useState(discoveryItineraries);
 
   const categories = ["All", "Nature", "Culture", "Adventure", "Heritage", "Nightlife", "Scenic"];
+
+
+  const fetchTravelIdeas = async (query) => {
+    try {
+      const res = await fetch("http://localhost:5000/api/ai/travel-ideas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ query })
+      });
+
+      const data = await res.json();
+
+      if (!data?.ideas) return;
+
+      const mapped = data.ideas.map((idea, index) => ({
+        id: index + 1,
+        name: idea.title,
+        summary: idea.description,
+        location: data.destination,
+        tags: [idea.theme],
+        image: `https://source.unsplash.com/800x600/?${data.destination},travel`,
+        rating: 4.7,
+        price: "",
+        days: new Array(parseInt(idea.estimatedDays) || 2).fill({ places: [] })
+      }));
+
+      setResults(mapped);
+
+    } catch (err) {
+      console.error("AI search failed", err);
+    }
+  };
 
   const filtered = results.filter((dest) => {
     if (activeCategory === 'All') return true;
@@ -42,7 +78,7 @@ const Discovery = () => {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <header className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
         <div>
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="flex items-center gap-2 mb-3"
@@ -50,17 +86,17 @@ const Discovery = () => {
             <Sparkles className="text-blue-600 w-5 h-5" />
             <span className="text-blue-600 font-bold uppercase tracking-[0.2em] text-xs">AI Discovery</span>
           </motion.div>
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight"
+            className="text-4xl md:textStp-5xl font-black text-slate-900 tracking-tight"
           >
             Find your next <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent italic font-black">experience.</span>
           </motion.h1>
           <p className="text-slate-500 mt-2 text-sm max-w-md">Discover handcrafted itineraries across India — from heritage trails to coastal escapes</p>
         </div>
 
-        <motion.button 
+        <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsModalOpen(true)}
@@ -72,7 +108,10 @@ const Discovery = () => {
       </header>
 
       <div className="mb-10">
-        <AgenticSearchBar />
+        {/* <AgenticSearchBar />
+         */}
+
+        <AgenticSearchBar onSearch={fetchTravelIdeas} />
       </div>
 
       {/* Featured Itinerary Banner */}
@@ -109,11 +148,10 @@ const Discovery = () => {
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 border shrink-0 ${
-              activeCategory === cat 
-                ? "bg-gradient-to-r from-blue-600 to-indigo-600 border-blue-600 text-white shadow-lg shadow-blue-200" 
-                : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700"
-            }`}
+            className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 border shrink-0 ${activeCategory === cat
+              ? "bg-gradient-to-r from-blue-600 to-indigo-600 border-blue-600 text-white shadow-lg shadow-blue-200"
+              : "bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:text-slate-700"
+              }`}
           >
             {cat}
           </button>
@@ -124,16 +162,16 @@ const Discovery = () => {
         <p className="text-sm text-slate-400 font-medium">{filtered.length} itineraries found</p>
       </div>
 
-      <motion.div 
+      <motion.div
         layout
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
       >
         <AnimatePresence>
           {filtered.map((dest, index) => (
-            <DestinationCard 
-              key={dest.id} 
-              destination={dest} 
-              index={index} 
+            <DestinationCard
+              key={dest.id}
+              destination={dest}
+              index={index}
               onAdd={() => setIsModalOpen(true)}
               onOpenDetails={() => navigate(`/discovery/${dest.id}`)}
             />
@@ -141,8 +179,8 @@ const Discovery = () => {
         </AnimatePresence>
       </motion.div>
 
-      <CreateTripModal 
-        isOpen={isModalOpen} 
+      <CreateTripModal
+        isOpen={isModalOpen}
         onClose={handleCloseModal}
         onCreateTrip={handleCreateTrip}
         isCreating={isCreating}

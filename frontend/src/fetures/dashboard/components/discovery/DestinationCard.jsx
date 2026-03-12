@@ -12,14 +12,14 @@ const DestinationCard = ({ destination, index, onAdd, onOpenDetails }) => {
       className="group bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-blue-500/8 hover:border-blue-200 transition-all duration-500 overflow-hidden cursor-pointer"
     >
       <div className="relative h-56 w-full overflow-hidden">
-        <img 
-          src={destination.image} 
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
-          alt={destination.name} 
+        <img
+          src={destination.image}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+          alt={destination.name}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
         <div className="absolute top-3 right-3">
-          <motion.button 
+          <motion.button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
@@ -50,12 +50,12 @@ const DestinationCard = ({ destination, index, onAdd, onOpenDetails }) => {
               <span className="text-xs font-medium">{destination.location}</span>
             </div>
           </div>
-          <div className="text-right shrink-0 ml-3">
+          {/* <div className="text-right shrink-0 ml-3">
             <div className="flex items-center gap-1 text-yellow-500">
               <Star size={13} fill="currentColor" />
               <span className="text-sm font-bold text-slate-900">{destination.rating}</span>
             </div>
-          </div>
+          </div> */}
         </div>
 
         {destination.summary && (
@@ -65,9 +65,8 @@ const DestinationCard = ({ destination, index, onAdd, onOpenDetails }) => {
         <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
           <div className="flex items-center gap-3 text-xs text-slate-400">
             <span className="flex items-center gap-1"><Clock size={11} /> {destination.days?.length || '–'} Days</span>
-            <span className="flex items-center gap-1"><Navigation size={11} /> {destination.stops?.length || destination.days?.reduce((s, d) => s + d.places.length, 0) || '–'} Stops</span>
+            {/* <span className="flex items-center gap-1"><Navigation size={11} /> {destination.stops?.length || destination.days?.reduce((s, d) => s + d.places.length, 0) || '–'} Stops</span> */}
           </div>
-          <span className="text-sm font-bold text-blue-600">{destination.price}</span>
         </div>
       </div>
     </motion.div>

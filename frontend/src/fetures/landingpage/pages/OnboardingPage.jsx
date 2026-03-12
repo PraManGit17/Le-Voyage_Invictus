@@ -117,7 +117,7 @@ const OnboardingPage = () => {
     <main className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
       <div className="max-w-5xl mx-auto px-6 py-10">
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-slate-400 hover:text-white mb-8 font-semibold text-sm">
-          <ArrowLeft size={16} /> Back to Home
+          <ArrowLeft sze={16} /> Back to Home
         </button>
 
         <div className="flex items-center gap-4 mb-10">
