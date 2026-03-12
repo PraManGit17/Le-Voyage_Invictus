@@ -392,10 +392,13 @@ export default function Stage4Discover({
   onChange
 }) {
 
-  const allCities = tripData.states.flatMap(
+  const stateIds = tripData.states
+    .map(name => INDIA_STATES.find(s => s.name === name)?.id)
+    .filter(Boolean);
+
+  const allCities = stateIds.flatMap(
     sid => CITIES_BY_STATE[sid] ?? []
   );
-
   // Toggle selection
   const togglePlace = (place) => {
 
@@ -527,11 +530,10 @@ export default function Stage4Discover({
                           })
                         }
                         className={`group relative border rounded-2xl p-5 transition-all duration-300 text-left
-                        ${
-                          isSelected
+                        ${isSelected
                             ? "border-[#FFC107] bg-[#FFC107]/10 scale-[1.02]"
                             : "border-white/5 bg-[#151515] hover:border-[#FFC107]/40 hover:bg-[#1a1a1a]"
-                        }`}
+                          }`}
                       >
 
                         {/* Selected checkmark */}

@@ -1,6 +1,12 @@
 import { CITIES_BY_STATE, INDIA_STATES } from "../../../data/indiaData";
 
 export default function Stage2Cities({ selectedStates, selectedCities, onChange }) {
+
+  const stateIds = selectedStates.map(name =>
+    INDIA_STATES.find(s => s.name === name)?.id
+  ).filter(Boolean);
+
+
   const toggle = (id) => {
     onChange(
       selectedCities.includes(id)
@@ -9,9 +15,9 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
     );
   };
 
-  const allCities = selectedStates.flatMap((sid) => CITIES_BY_STATE[sid] ?? []);
+  const allCities = stateIds.flatMap((sid) => CITIES_BY_STATE[sid] ?? []);
 
-  const citiesByState = selectedStates.reduce((acc, sid) => {
+  const citiesByState = stateIds.reduce((acc, sid) => {
     const cities = CITIES_BY_STATE[sid];
     if (cities) acc[sid] = cities;
     return acc;
@@ -57,7 +63,7 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
 
       {/* States & Cities List */}
       <div className="space-y-10 max-h-[480px] overflow-y-auto pr-4 no-scrollbar">
-        {selectedStates.map((sid) => {
+        {stateIds.map((sid) => {
           const state = INDIA_STATES.find((s) => s.id === sid);
           const cities = citiesByState[sid] ?? [];
           if (!state || cities.length === 0) return null;
@@ -81,18 +87,16 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
                     <button
                       key={city.id}
                       onClick={() => toggle(city.id)}
-                      className={`group relative flex flex-col p-5 rounded-2xl border-2 transition-all duration-300 text-left ${
-                        isSelected
+                      className={`group relative flex flex-col p-5 rounded-2xl border-2 transition-all duration-300 text-left ${isSelected
                           ? "bg-[#FFC107]/10 border-[#FFC107] shadow-[0_10px_30px_rgba(255,193,7,0.15)] scale-[1.01]"
                           : "bg-[#151515] border-white/5 hover:border-white/20 hover:bg-[#1a1a1a]"
-                      }`}
+                        }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="min-w-0">
                           <h4
-                            className={`text-lg font-bold transition-colors ${
-                              isSelected ? "text-[#FFC107]" : "text-white"
-                            }`}
+                            className={`text-lg font-bold transition-colors ${isSelected ? "text-[#FFC107]" : "text-white"
+                              }`}
                           >
                             {city.name}
                           </h4>
@@ -103,11 +107,10 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
 
                         {/* Animated Checkbox */}
                         <div
-                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                            isSelected
+                          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isSelected
                               ? "bg-[#FFC107] border-[#FFC107]"
                               : "border-white/10"
-                          }`}
+                            }`}
                         >
                           {isSelected && (
                             <svg
@@ -133,11 +136,10 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
                         {city.tags.map((tag) => (
                           <span
                             key={tag}
-                            className={`text-[9px] px-2 py-1 rounded font-bold uppercase tracking-tighter ${
-                              isSelected
+                            className={`text-[9px] px-2 py-1 rounded font-bold uppercase tracking-tighter ${isSelected
                                 ? "bg-[#FFC107] text-black"
                                 : "bg-white/5 text-white/40 group-hover:text-white/60"
-                            }`}
+                              }`}
                           >
                             {tag}
                           </span>
@@ -151,7 +153,7 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
           );
         })}
 
-        {selectedStates.length === 0 && (
+        {stateIds.length === 0 && (
           <div className="text-center py-20 bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
             <span className="text-5xl mb-4 block opacity-20">📍</span>
             <p className="playfair-display italic text-white/40 text-xl">

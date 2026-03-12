@@ -31,3 +31,24 @@
   font-weight: 400;
   font-style: normal;
 }
+
+/* Calendar dark theme */
+
+.rdp {
+  --rdp-background-color: #0f0f0f;
+  --rdp-accent-color: #FFC107;
+  --rdp-outline: 2px solid #FFC107;
+}
+
+.rdp-day_selected {
+  background: #FFC107 !important;
+  color: black !important;
+}
+
+.rdp-day_today {
+  border: 1px solid #FFC107;
+}
+
+.rdp-day:hover {
+  background: rgba(255,193,7,0.2);
+}

@@ -13,6 +13,7 @@ const STAGE_LABELS = ["States", "Cities", "Vibe", "Discover", "Food", "Stay & Go
 export default function TripCreationFlow() {
   const [stage, setStage] = useState(1);
   const [submitted, setSubmitted] = useState(false);
+  const [dates, setDates] = useState([]);
   // const [data, setData] = useState({
   // //   states: [], cities: [], tripTypes: [], food: [], accom: [], travel: [], specialNotes: "",
   // // });
@@ -38,6 +39,7 @@ export default function TripCreationFlow() {
     food: [],
     accom: [],
     travel: [],
+    dates: [],
     specialNotes: ""
   });
 
@@ -115,19 +117,36 @@ export default function TripCreationFlow() {
   }
 
 
+  // useEffect(() => {
+  //   const saved = localStorage.getItem("tripData")
+  //   const savedStage = localStorage.getItem("tripStage")
+
+  //   if (saved) {
+  //     setData(JSON.parse(saved))
+  //   }
+
+  //   if (savedStage) {
+  //     setStage(Number(savedStage))
+  //   }
+  // }, [])
+
   useEffect(() => {
-    const saved = localStorage.getItem("tripData")
-    const savedStage = localStorage.getItem("tripStage")
+    const saved = localStorage.getItem("tripData");
+    const savedStage = localStorage.getItem("tripStage");
 
     if (saved) {
-      setData(JSON.parse(saved))
+      const parsedData = JSON.parse(saved);
+      // Convert date strings back to Date objects
+      if (parsedData.dates) {
+        parsedData.dates = parsedData.dates.map(d => new Date(d));
+      }
+      setData(parsedData);
     }
 
     if (savedStage) {
-      setStage(Number(savedStage))
+      setStage(Number(savedStage));
     }
-  }, [])
-
+  }, []);
 
 
   // useEffect(() => {
@@ -188,7 +207,18 @@ export default function TripCreationFlow() {
                 foodOptions={foodOptions}
               />
             )}
-            {stage === 6 && <Stage6Accommodation selectedAccom={data.accom} selectedTravel={data.travel} onAccomChange={v => setData(d => ({ ...d, accom: v }))} onTravelChange={v => setData(d => ({ ...d, travel: v }))} />}
+
+
+            {stage === 6 && (
+              <Stage6Accommodation
+                selectedAccom={data.accom}
+                selectedTravel={data.travel}
+                onAccomChange={v => setData(d => ({ ...d, accom: v }))}
+                onTravelChange={v => setData(d => ({ ...d, travel: v }))}
+                selectedDates={data.dates} // Change this
+                onDateChange={v => setData(d => ({ ...d, dates: v }))} // Change this
+              />
+            )}
             {stage === 7 && <Stage7Special value={data.specialNotes} onChange={v => setData(d => ({ ...d, specialNotes: v }))} tripSummary={data} onSubmit={handleSubmit} />}
           </div>
 
