@@ -45,7 +45,7 @@ const Sidebar = () => {
     { icon: <Compass size={20} />, label: 'Discovery', path: '/discovery' },
     { icon: <Heart size={20} />, label: 'Saved Places', path: '/saved-places' },
     { icon: <BookOpen size={20} />, label: 'Memory Book', path: '/memory-book' },
-    { icon: <Users size={20} />, label: 'Group Trips', path: '/groups' },
+    { icon: <Users size={20} />, label: 'Travel Workspace', path: '/workspace' },
   ];
 
   // Group trips by status

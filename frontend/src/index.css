@@ -1,100 +1,58 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-/* Global font and smooth scrolling behavior */
-html {
-  scroll-behavior: smooth;
-  font-family: 'Inter', 'Poppins', system-ui, -apple-system, sans-serif;
+
+/* Hide scrollbar but keep scrolling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari, Edge */
 }
 
-body {
-  font-family: 'Inter', 'Poppins', system-ui, -apple-system, sans-serif;
-  font-feature-settings: 'cv10', 'cv03', 'cv04', 'cv09';
+.no-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and old Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
-/* Typography classes */
-.font-display {
-  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.025em;
+
+.playfair-display {
+  font-family: "Playfair Display", serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
 }
 
-.font-body {
-  font-family: 'Inter', system-ui, sans-serif;
+.inter {
+  font-family: "Inter", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.bebas-neue {
+  font-family: "Bebas Neue", sans-serif;
   font-weight: 400;
-  line-height: 1.7;
+  font-style: normal;
 }
 
-/* Enhanced scrolling for webkit browsers */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #f59e0b #f5efe6;
+/* Calendar dark theme */
+
+.rdp {
+  --rdp-background-color: #0f0f0f;
+  --rdp-accent-color: #FFC107;
+  --rdp-outline: 2px solid #FFC107;
 }
 
-::-webkit-scrollbar {
-  width: 6px;
+.rdp-day_selected {
+  background: #FFC107 !important;
+  color: black !important;
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+.rdp-day_today {
+  border: 1px solid #FFC107;
 }
 
-::-webkit-scrollbar-thumb {
-  background: #f59e0b;
-  border-radius: 3px;
+.rdp-day:hover {
+  background: rgba(255, 193, 7, 0.2);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #d97706;
-}
-
-/* Custom scrollbar classes for Tailwind */
-.scrollbar-thin {
-  scrollbar-width: thin;
-}
-
-.scrollbar-thumb-amber-300 {
-  scrollbar-color: #fcd34d transparent;
-}
-
-.scrollbar-track-transparent {
-  scrollbar-color: transparent transparent;
-}
-
-/* Smooth animations for all elements */
-* {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-/* Additional smooth scroll utility */
-.scroll-smooth {
-  scroll-behavior: smooth;
-}
-
-/* Enhanced focus styles */
-*:focus {
-  outline: 2px solid #f59e0b;
-  outline-offset: 2px;
-}
-
-/* Smooth transitions for all elements */
-* {
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-/* Leaflet Map Styles */
-.leaflet-container {
-  border-radius: 1rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
-.leaflet-popup-content-wrapper {
-  border-radius: 0.75rem;
-  background: white;
-}
-
-.leaflet-popup-tip {
-  background: white;
-}

@@ -9,7 +9,19 @@ const placesRoutes = require("./routes/placesRoutes")
 const memoryBookRoutes = require("./routes/memoryBookRoutes")
 
 const aiRoutes = require("./routes/airoutes")
+// const travelRoutes = require("./routes/travelRoutes")
+// const aiRoutes = require("./routes/airoutes")
 const travelRoutes = require("./routes/travelRoutes")
+const planTripRoutes = require("./routes/planTripRoutes");
+
+// final product
+const itineraryRoutes = require("./routes/itineraryRoutes");
+const trainSearch = require("./routes/trainSearchRoutes");
+const foodRoutes = require("./routes/foodRoutes");
+const accommodationRoutes = require("./routes/accommodationRoutes");
+const busearch =  require("./routes/busSearchRoutes")
+const chatRoutes = require("./routes/chatRoutes");
+
 const app = express()
 
 connectDB()
@@ -22,6 +34,16 @@ app.use("/api/places", placesRoutes)
 app.use("/api/memory-book", memoryBookRoutes)
 app.use("/api/ai", aiRoutes)
 app.use("/api", travelRoutes);
+// app.use("/api/ai", aiRoutes)
+// app.use("/api", travelRoutes);
+app.use("/api/trip", planTripRoutes);
+app.use("/api/itinerary", itineraryRoutes);
+app.use("/api/train-search", trainSearch);
+app.use("/api/food-stalls", foodRoutes);
+app.use("/api/accommodation", accommodationRoutes);
+app.use("/api/bus-search", busearch);
+app.use("/api/chat",chatRoutes);
+
 
 app.listen(process.env.PORT, () => {
   console.log("Server running on port", process.env.PORT)

@@ -11,8 +11,10 @@ import GroupTrips from './fetures/dashboard/pages/GroupTrips';
 import GroupTripDetail from './fetures/dashboard/pages/GroupTripDetail';
 import SavedPlaces from './fetures/dashboard/pages/SavedPlaces';
 import MemoryBook from './fetures/dashboard/pages/MemoryBook';
-import DashboardLayout from './fetures/dashboard/layouts/DashboardLayout';
+// import DashboardLayout from './fetures/dashboard/layouts/DashboardLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import DashboardLayout from './fetures/dashboard/layouts/DashboardLayout';
+import Workspace from './fetures/dashboard/pages/Workspace';
 
 const App = () => {
   return (
@@ -23,6 +25,8 @@ const App = () => {
 
       {/* Protected */}
       <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/onboarding" element={<OnboardingPage />} />
 
       <Route 
         path="/dashboard" 
@@ -65,17 +69,16 @@ const App = () => {
               <TripWorkspace />
             </DashboardLayout>
           </ProtectedRoute>
+
         } 
       />
 
       <Route
-        path="/groups"
+        path="/workspace"
         element={
-          <ProtectedRoute>
-            <DashboardLayout>
-              <GroupTrips />
-            </DashboardLayout>
-          </ProtectedRoute>
+          <DashboardLayout>
+            <Workspace />
+          </DashboardLayout>
         }
       />
 
@@ -109,6 +112,7 @@ const App = () => {
               <MemoryBook />
             </DashboardLayout>
           </ProtectedRoute>
+
         }
       />
 
