@@ -1,21 +1,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { tripService } from '../api/tripService';
 import { buildTripPayload } from '../services/tripWorkspaceService';
+import { useAuth } from '../../../context/AuthContext';
 
 const DEFAULT_USER_ID = 'demo-user';
 
 export const useTripManager = () => {
+  const { token, user } = useAuth();
   const [trips, setTrips] = useState([]);
   const [activeTripId, setActiveTripId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState('');
 
+  const storageUserId = user?._id || user?.id || DEFAULT_USER_ID;
+
   const loadTrips = useCallback(async () => {
     setIsLoading(true);
     setError('');
     try {
-      const storedTrips = await tripService.fetchAllTrips(DEFAULT_USER_ID);
+      const storedTrips = await tripService.fetchAllTrips(storageUserId, token);
       setTrips(storedTrips);
       if (!activeTripId && storedTrips.length > 0) {
         setActiveTripId(storedTrips[0].id);
@@ -25,7 +29,7 @@ export const useTripManager = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [activeTripId]);
+  }, [activeTripId, storageUserId, token]);
 
   useEffect(() => {
     loadTrips();
@@ -36,7 +40,7 @@ export const useTripManager = () => {
     setError('');
     try {
       const payload = buildTripPayload(tripInput);
-      const createdTrip = await tripService.createTrip(DEFAULT_USER_ID, payload);
+      const createdTrip = await tripService.createTrip(storageUserId, payload, token);
       setTrips((prevTrips) => [createdTrip, ...prevTrips]);
       setActiveTripId(createdTrip.id);
       return createdTrip;
@@ -46,25 +50,25 @@ export const useTripManager = () => {
     } finally {
       setIsCreating(false);
     }
-  }, []);
+  }, [storageUserId, token]);
 
   const updateTripNotes = useCallback(async (tripId, notes) => {
-    const updatedTrip = await tripService.updateTrip(DEFAULT_USER_ID, tripId, { notes });
+    const updatedTrip = await tripService.updateTrip(storageUserId, tripId, { notes }, token);
     if (!updatedTrip) {
       return null;
     }
     setTrips((prevTrips) => prevTrips.map((trip) => (trip.id === tripId ? updatedTrip : trip)));
     return updatedTrip;
-  }, []);
+  }, [storageUserId, token]);
 
   const updateTripData = useCallback(async (tripId, partialUpdate) => {
-    const updatedTrip = await tripService.updateTrip(DEFAULT_USER_ID, tripId, partialUpdate);
+    const updatedTrip = await tripService.updateTrip(storageUserId, tripId, partialUpdate, token);
     if (!updatedTrip) {
       return null;
     }
     setTrips((prevTrips) => prevTrips.map((trip) => (trip.id === tripId ? updatedTrip : trip)));
     return updatedTrip;
-  }, []);
+  }, [storageUserId, token]);
 
   const activeTrip = useMemo(
     () => trips.find((trip) => trip.id === activeTripId) || null,

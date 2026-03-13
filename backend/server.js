@@ -22,6 +22,7 @@ const accommodationRoutes = require("./routes/accommodationRoutes");
 const busearch =  require("./routes/busSearchRoutes")
 const chatRoutes = require("./routes/chatRoutes");
 const groupTripRoutes = require("./routes/groupTripRoutes");
+const tripRoutes = require("./routes/tripRoutes");
 
 const app = express()
 
@@ -45,6 +46,7 @@ app.use("/api/accommodation", accommodationRoutes);
 app.use("/api/bus-search", busearch);
 app.use("/api/chat",chatRoutes);
 app.use("/api/group-trips", groupTripRoutes);
+app.use("/api/trips", tripRoutes);
 
 
 app.listen(process.env.PORT, () => {
