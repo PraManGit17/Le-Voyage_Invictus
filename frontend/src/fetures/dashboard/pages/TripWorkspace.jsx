@@ -10,6 +10,7 @@ import PlaceNavigationAssistant from '../components/discovery/PlaceNavigationAss
 import ItineraryRouteMap from '../components/discovery/ItineraryRouteMap';
 import { useTrips } from '../../../context/TripContext';
 import { getItineraryById } from '../data/discoveryItineraries';
+import { buildMemoryBookMeta, hasLegacyMemoryBookPayload, memoryBookStorage } from '../services/memoryBookStorage';
 
 const TripWorkspace = () => {
   const { tripId } = useParams();
@@ -23,6 +24,7 @@ const TripWorkspace = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedPlaceId, setSelectedPlaceId] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dayImagesByDay, setDayImagesByDay] = useState({});
 
   const linkedItinerary = useMemo(() => {
     if (!trip?.recommendedItineraryId) return null;
@@ -97,6 +99,55 @@ const TripWorkspace = () => {
     setNotesDraft(trip?.notes || '');
   }, [trip?.notes]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    const loadMemoryBook = async () => {
+      if (!trip?.id) {
+        if (isActive) {
+          setDayImagesByDay({});
+        }
+        return;
+      }
+
+      const legacyMemoryBook = trip.memoryBook || {};
+      const storedMemoryBook = await memoryBookStorage.getTripMemoryBook(trip.id);
+      const shouldMigrateLegacy = hasLegacyMemoryBookPayload(legacyMemoryBook)
+        && Object.keys(storedMemoryBook.dayImages).length === 0
+        && storedMemoryBook.generatedPages.length === 0;
+
+      const resolvedMemoryBook = shouldMigrateLegacy
+        ? await memoryBookStorage.saveTripMemoryBook(trip.id, {
+          dayImages: legacyMemoryBook.dayImages || {},
+          generatedPages: legacyMemoryBook.generatedPages || [],
+          generatedAt: legacyMemoryBook.generatedAt || null,
+        })
+        : storedMemoryBook;
+
+      if (!isActive) {
+        return;
+      }
+
+      setDayImagesByDay(resolvedMemoryBook.dayImages);
+
+      if (shouldMigrateLegacy || hasLegacyMemoryBookPayload(legacyMemoryBook)) {
+        try {
+          await updateTripData(trip.id, {
+            memoryBook: buildMemoryBookMeta(resolvedMemoryBook),
+          });
+        } catch {
+          // Keep workspace functional even if local metadata cleanup fails.
+        }
+      }
+    };
+
+    loadMemoryBook();
+
+    return () => {
+      isActive = false;
+    };
+  }, [trip?.id, trip?.memoryBook, updateTripData]);
+
   const totalDays = useMemo(() => Math.max(trip?.durationDays || 1, 1), [trip?.durationDays]);
   const days = useMemo(() => Array.from({ length: totalDays }, (_, index) => index + 1), [totalDays]);
 
@@ -118,7 +169,7 @@ const TripWorkspace = () => {
 
   const getDayImages = (dayNumber) => {
     const key = String(dayNumber);
-    return trip?.memoryBook?.dayImages?.[key] || [];
+    return dayImagesByDay[key] || [];
   };
 
   const handleAddDayImages = async (dayNumber, files) => {
@@ -128,7 +179,7 @@ const TripWorkspace = () => {
 
     const dayKey = String(dayNumber);
     const existing = getDayImages(dayNumber);
-    const remainingSlots = Math.max(0, 2 - existing.length);
+    const remainingSlots = Math.max(0, 1 - existing.length);
     if (remainingSlots === 0) {
       return;
     }
@@ -158,16 +209,24 @@ const TripWorkspace = () => {
     }
 
     const nextDayImages = {
-      ...(trip?.memoryBook?.dayImages || {}),
-      [dayKey]: [...existing, ...newImages].slice(0, 2),
+      ...dayImagesByDay,
+      [dayKey]: [...existing, ...newImages].slice(0, 1),
     };
 
-    await updateTripData(trip.id, {
-      memoryBook: {
-        ...(trip?.memoryBook || {}),
-        dayImages: nextDayImages,
-      },
-    });
+    const nextMemoryBook = await memoryBookStorage.updateTripMemoryBook(trip.id, (current) => ({
+      ...current,
+      dayImages: nextDayImages,
+    }));
+
+    setDayImagesByDay(nextMemoryBook.dayImages);
+
+    try {
+      await updateTripData(trip.id, {
+        memoryBook: buildMemoryBookMeta(nextMemoryBook),
+      });
+    } catch {
+      // Keep workspace image uploads working even if metadata sync fails.
+    }
   };
 
   const handleRemoveDayImage = async (dayNumber, imageIndex) => {
@@ -179,7 +238,7 @@ const TripWorkspace = () => {
     const current = getDayImages(dayNumber);
     const updatedForDay = current.filter((_, idx) => idx !== imageIndex);
     const nextDayImages = {
-      ...(trip?.memoryBook?.dayImages || {}),
+      ...dayImagesByDay,
       [dayKey]: updatedForDay,
     };
 
@@ -187,12 +246,20 @@ const TripWorkspace = () => {
       delete nextDayImages[dayKey];
     }
 
-    await updateTripData(trip.id, {
-      memoryBook: {
-        ...(trip?.memoryBook || {}),
-        dayImages: nextDayImages,
-      },
-    });
+    const nextMemoryBook = await memoryBookStorage.updateTripMemoryBook(trip.id, (current) => ({
+      ...current,
+      dayImages: nextDayImages,
+    }));
+
+    setDayImagesByDay(nextMemoryBook.dayImages);
+
+    try {
+      await updateTripData(trip.id, {
+        memoryBook: buildMemoryBookMeta(nextMemoryBook),
+      });
+    } catch {
+      // Keep workspace image removals working even if metadata sync fails.
+    }
   };
 
   const handleSelectPlace = (placeId) => {
@@ -330,10 +397,10 @@ const TripWorkspace = () => {
               </label>
             </div>
 
-            <p className="text-xs text-slate-500 mb-4">You can add at most 2 images for each day.</p>
+            <p className="text-xs text-slate-500 mb-4">You can add at most 1 image for each day.</p>
 
-            <div className="grid grid-cols-2 gap-4">
-              {[0, 1].map((slotIndex) => {
+            <div className="grid grid-cols-1 gap-4">
+              {[0].map((slotIndex) => {
                 const image = getDayImages(activeDay)[slotIndex];
                 return (
                   <div key={slotIndex} className="relative rounded-xl border-2 border-dashed border-amber-200 bg-amber-50/50 aspect-video overflow-hidden">
@@ -350,7 +417,7 @@ const TripWorkspace = () => {
                       </>
                     ) : (
                       <div className="h-full w-full flex items-center justify-center text-slate-400 text-xs font-semibold">
-                        Empty slot {slotIndex + 1}
+                        Empty slot
                       </div>
                     )}
                   </div>

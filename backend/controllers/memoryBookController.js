@@ -25,7 +25,7 @@ async function invokeWithFallback(messages) {
 }
 
 // POST /api/memory-book/generate-story
-// Accepts: { pages: [{ caption, location }] } — generates story text for each page
+// Accepts: { pages: [{ caption, location, dayLabel, tripTitle, highlights, summary }] }
 exports.generateStory = async (req, res) => {
   try {
     const { pages } = req.body
@@ -35,13 +35,29 @@ exports.generateStory = async (req, res) => {
     }
 
     const pagesContext = pages
-      .map((p, i) => `Page ${i + 1}: Caption: "${p.caption || "No caption"}", Location: "${p.location || "Unknown"}"`)
+      .map((p, i) => {
+        const highlights = Array.isArray(p.highlights) && p.highlights.length
+          ? p.highlights.join(", ")
+          : "None provided"
+
+        return [
+          `Page ${i + 1}:`,
+          `Trip title: "${p.tripTitle || "Untitled Journey"}"`,
+          `Day label: "${p.dayLabel || `Day ${i + 1}`}"`,
+          `Caption: "${p.caption || "No caption"}"`,
+          `Location: "${p.location || "Unknown"}"`,
+          `Highlights: "${highlights}"`,
+          `Trip summary: "${p.summary || "No summary provided"}"`,
+        ].join(" ")
+      })
       .join("\n")
 
-    const prompt = `You are a poetic travel storyteller. The user has a trip memory book with photos.
-For each page described below, write a beautiful, immersive story paragraph (3-5 sentences) that brings the travel memory to life.
-Write in first person, as if the traveler is recounting the memory.
-Make it emotional, vivid, and nostalgic.
+    const prompt = `You are a poetic travel storyteller helping write a travel memory book.
+For each page described below, write one beautiful, immersive paragraph of 3 to 5 sentences.
+Write in first person, as if the traveler is remembering the day.
+Use the caption and trip details as anchors, but make the writing feel natural, nostalgic, vivid, and personal.
+Do not mention that the text was AI-generated. Do not output titles or bullet points.
+Keep each paragraph distinct from the others.
 
 ${pagesContext}
 

@@ -1,15 +1,26 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   BookOpen, ChevronLeft, ChevronRight, Sparkles, MapPin,
   Loader2, Images, Trash2, ArrowRight,
 } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTrips } from '../../../context/TripContext';
+import { useAuth } from '../../../context/AuthContext';
+import { buildMemoryBookMeta, hasLegacyMemoryBookPayload, memoryBookStorage } from '../services/memoryBookStorage';
 
 // ═══════════════════════════════════════════════════════
 //  STEP 1 — Upload daily images (max 1 per day)
 // ═══════════════════════════════════════════════════════
-function SetupStep({ trip, dayImages, onAddImagesForDay, onRemoveImageForDay, onCreateBook, isGenerating }) {
+function SetupStep({
+  trip,
+  dayImages,
+  dayCaptions,
+  onAddImagesForDay,
+  onRemoveImageForDay,
+  onCaptionChange,
+  onCreateBook,
+  isGenerating,
+}) {
   const dayNumbers = useMemo(
     () => Array.from({ length: Math.max(trip?.durationDays || 1, 1) }, (_, idx) => idx + 1),
     [trip?.durationDays],
@@ -31,6 +42,7 @@ function SetupStep({ trip, dayImages, onAddImagesForDay, onRemoveImageForDay, on
         <div className="space-y-4 mb-8">
           {dayNumbers.map((day) => {
             const images = dayImages[String(day)] || [];
+            const caption = dayCaptions[String(day)] || '';
             return (
               <div key={day} className="bg-white rounded-xl border border-amber-200/80 shadow-sm p-4">
                 <div className="flex items-center justify-between mb-3">
@@ -78,6 +90,19 @@ function SetupStep({ trip, dayImages, onAddImagesForDay, onRemoveImageForDay, on
                       </div>
                     );
                   })()}
+
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.18em] text-amber-700">
+                      Your Caption
+                    </label>
+                    <input
+                      type="text"
+                      value={caption}
+                      onChange={(event) => onCaptionChange(day, event.target.value)}
+                      placeholder="Write your own caption for this day"
+                      className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-amber-950 placeholder:text-amber-300 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
                 </div>
               </div>
             );
@@ -212,7 +237,38 @@ function playBookOpenSound() {
 // ═══════════════════════════════════════════════════════
 const FLIP_MS = 1400;
 
+const humanizeValue = (value) => {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    return trimmed && !trimmed.includes('[object Object]') ? trimmed : '';
+  }
+
+  if (typeof value === 'number') {
+    return String(value);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((entry) => humanizeValue(entry)).filter(Boolean).join(', ');
+  }
+
+  if (value && typeof value === 'object') {
+    return humanizeValue(
+      value.name
+      || value.title
+      || value.city
+      || value.location
+      || value.label
+      || value.activity,
+    );
+  }
+
+  return '';
+};
+
 function LeftPage({ page, index }) {
+  const readableCaption = humanizeValue(page.caption) || `Memory ${index + 1}`;
+  const readableLocation = humanizeValue(page.location);
+
   return (
     <div className="w-full h-full bg-[#faf3e5] flex flex-col relative overflow-hidden select-none">
       {/* Paper texture dots */}
@@ -235,15 +291,15 @@ function LeftPage({ page, index }) {
             <div className="absolute bottom-0 left-0 w-5 h-5 border-b-2 border-l-2 border-amber-300/30 rounded-bl" />
             <div className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-amber-300/30 rounded-br" />
           </div>
-          {page.caption && (
+          {readableCaption && (
             <p className="mt-3 text-xs font-serif italic text-amber-800/80 text-center px-3 tracking-wide">
-              "{page.caption}"
+              "{readableCaption}"
             </p>
           )}
-          {page.location && (
+          {readableLocation && (
             <div className="flex items-center justify-center gap-1 mt-1.5">
               <MapPin size={10} className="text-amber-400/50" />
-              <span className="text-[10px] font-serif text-amber-600/70 tracking-wider uppercase">{page.location}</span>
+              <span className="text-[10px] font-serif text-amber-600/70 tracking-wider uppercase">{readableLocation}</span>
             </div>
           )}
         </div>
@@ -253,6 +309,10 @@ function LeftPage({ page, index }) {
 }
 
 function RightPage({ page, index }) {
+  const readableCaption = humanizeValue(page.caption) || `Memory ${index + 1}`;
+  const readableLocation = humanizeValue(page.location);
+  const heading = readableCaption || readableLocation || `Memory ${index + 1}`;
+
   return (
     <div className="w-full h-full bg-[#faf3e5] flex flex-col relative overflow-hidden select-none">
       {/* Gutter shadow */}
@@ -271,7 +331,7 @@ function RightPage({ page, index }) {
         {/* Title */}
         <div className="mb-3">
           <h2 className="text-base font-serif font-bold text-amber-900 tracking-wide">
-            {page.location || page.caption || `Memory ${index + 1}`}
+            {heading}
           </h2>
           <div className="mt-1.5 flex items-center gap-2">
             <div className="h-px flex-1 bg-linear-to-r from-amber-400/40 to-transparent" />
@@ -654,35 +714,95 @@ export default function MemoryBook() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { getTripById, updateTripData, trips } = useTrips();
+  const { token } = useAuth();
   const tripId = searchParams.get('tripId');
   const trip = tripId ? getTripById(tripId) : trips[0] || null;
 
   const [step, setStep] = useState('setup'); // 'setup' | 'book'
+  const [dayImages, setDayImages] = useState({});
+  const [dayCaptions, setDayCaptions] = useState({});
   const [bookPages, setBookPages] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const dayImages = trip?.memoryBook?.dayImages || {};
+  useEffect(() => {
+    let isActive = true;
+
+    const loadMemoryBook = async () => {
+      if (!trip?.id) {
+        if (isActive) {
+          setDayImages({});
+          setDayCaptions({});
+          setBookPages([]);
+        }
+        return;
+      }
+
+      const legacyMemoryBook = trip.memoryBook || {};
+      const storedMemoryBook = await memoryBookStorage.getTripMemoryBook(trip.id);
+      const shouldMigrateLegacy = hasLegacyMemoryBookPayload(legacyMemoryBook)
+        && Object.keys(storedMemoryBook.dayImages).length === 0
+        && storedMemoryBook.generatedPages.length === 0;
+
+      const resolvedMemoryBook = shouldMigrateLegacy
+        ? await memoryBookStorage.saveTripMemoryBook(trip.id, {
+          dayImages: legacyMemoryBook.dayImages || {},
+          dayCaptions: legacyMemoryBook.dayCaptions || {},
+          generatedPages: legacyMemoryBook.generatedPages || [],
+          generatedAt: legacyMemoryBook.generatedAt || null,
+        })
+        : storedMemoryBook;
+
+      if (!isActive) {
+        return;
+      }
+
+      setDayImages(resolvedMemoryBook.dayImages);
+  setDayCaptions(resolvedMemoryBook.dayCaptions || {});
+      setBookPages(resolvedMemoryBook.generatedPages);
+
+      if (shouldMigrateLegacy || hasLegacyMemoryBookPayload(legacyMemoryBook)) {
+        try {
+          await updateTripData(trip.id, {
+            memoryBook: buildMemoryBookMeta(resolvedMemoryBook),
+          });
+        } catch {
+          // The UI can continue to work even if metadata cleanup fails.
+        }
+      }
+    };
+
+    loadMemoryBook();
+
+    return () => {
+      isActive = false;
+    };
+  }, [trip?.id, trip?.memoryBook, updateTripData]);
+
+  const destinationSummary = useMemo(() => {
+    const readableDestinations = humanizeValue(trip?.destinations);
+    return readableDestinations || 'your destination';
+  }, [trip?.destinations]);
 
   const getTripDayContext = (dayNumber) => {
     const generatedDay = trip?.generatedPlan?.activityPlan?.days?.find((day) => Number(day.day) === dayNumber);
     if (generatedDay) {
-      const stops = (generatedDay.activities || []).map((activity) => activity.activity).filter(Boolean);
+      const stops = (generatedDay.activities || []).map((activity) => humanizeValue(activity.activity || activity)).filter(Boolean);
       return {
-        dayLabel: generatedDay.dayTitle || `Day ${dayNumber}`,
-        location: generatedDay.city || trip?.destinations?.join(', ') || 'your destination',
+        dayLabel: humanizeValue(generatedDay.dayTitle) || `Day ${dayNumber}`,
+        location: humanizeValue(generatedDay.city) || destinationSummary,
         stops,
-        summary: generatedDay.theme || generatedDay.vibe || '',
+        summary: humanizeValue(generatedDay.theme) || humanizeValue(generatedDay.vibe) || '',
       };
     }
 
     const itineraryStops = (trip?.itinerary || [])
       .filter((item) => Number(item.day) === dayNumber)
-      .map((item) => item.title)
+      .map((item) => humanizeValue(item.title || item.location || item))
       .filter(Boolean);
 
     return {
       dayLabel: `Day ${dayNumber}`,
-      location: trip?.destinations?.join(', ') || 'your destination',
+      location: destinationSummary,
       stops: itineraryStops,
       summary: '',
     };
@@ -735,12 +855,20 @@ export default function MemoryBook() {
       [dayKey]: [...existing, ...encodedImages.filter(Boolean)].slice(0, 1),
     };
 
-    await updateTripData(trip.id, {
-      memoryBook: {
-        ...(trip?.memoryBook || {}),
-        dayImages: nextDayImages,
-      },
-    });
+    const nextMemoryBook = await memoryBookStorage.updateTripMemoryBook(trip.id, (current) => ({
+      ...current,
+      dayImages: nextDayImages,
+    }));
+
+    setDayImages(nextMemoryBook.dayImages);
+
+    try {
+      await updateTripData(trip.id, {
+        memoryBook: buildMemoryBookMeta(nextMemoryBook),
+      });
+    } catch {
+      // Avoid blocking uploads when metadata sync fails.
+    }
   };
 
   const removeImageForDay = async (dayNumber, imageIndex) => {
@@ -755,18 +883,60 @@ export default function MemoryBook() {
       delete nextDayImages[dayKey];
     }
 
-    await updateTripData(trip.id, {
-      memoryBook: {
-        ...(trip?.memoryBook || {}),
-        dayImages: nextDayImages,
-      },
-    });
+    const nextMemoryBook = await memoryBookStorage.updateTripMemoryBook(trip.id, (current) => ({
+      ...current,
+      dayImages: nextDayImages,
+    }));
+
+    setDayImages(nextMemoryBook.dayImages);
+
+    try {
+      await updateTripData(trip.id, {
+        memoryBook: buildMemoryBookMeta(nextMemoryBook),
+      });
+    } catch {
+      // Avoid blocking removals when metadata sync fails.
+    }
+  };
+
+  const updateCaptionForDay = async (dayNumber, captionValue) => {
+    if (!trip) {
+      return;
+    }
+
+    const dayKey = String(dayNumber);
+    const trimmedCaption = captionValue.trimStart();
+    const nextDayCaptions = {
+      ...dayCaptions,
+      [dayKey]: trimmedCaption,
+    };
+
+    if (!trimmedCaption.trim()) {
+      delete nextDayCaptions[dayKey];
+    }
+
+    const nextMemoryBook = await memoryBookStorage.updateTripMemoryBook(trip.id, (current) => ({
+      ...current,
+      dayImages,
+      dayCaptions: nextDayCaptions,
+    }));
+
+    setDayCaptions(nextMemoryBook.dayCaptions || {});
+
+    try {
+      await updateTripData(trip.id, {
+        memoryBook: buildMemoryBookMeta(nextMemoryBook),
+      });
+    } catch {
+      // Avoid blocking caption edits when metadata sync fails.
+    }
   };
 
   const createBook = async () => {
     if (!trip) return;
 
     const pages = [];
+    const pagePayloads = [];
     const totalDays = Math.max(trip.durationDays || 1, 1);
 
     setIsGenerating(true);
@@ -775,11 +945,24 @@ export default function MemoryBook() {
       const dayKey = String(day);
       const dayContext = getTripDayContext(day);
       const images = dayImages[dayKey] || [];
+      const customCaption = dayCaptions[dayKey]?.trim();
 
       images.forEach((image, imageIndex) => {
+        const fallbackCaption = `${dayContext.dayLabel} · Memory ${imageIndex + 1}`;
+        const resolvedCaption = customCaption || fallbackCaption;
+
+        pagePayloads.push({
+          tripTitle: trip.title,
+          dayLabel: dayContext.dayLabel,
+          caption: resolvedCaption,
+          location: dayContext.location,
+          highlights: dayContext.stops,
+          summary: dayContext.summary,
+        });
+
         pages.push({
           image,
-          caption: `${dayContext.dayLabel} · Memory ${imageIndex + 1}`,
+          caption: resolvedCaption,
           location: dayContext.location,
           description: '',
           story: buildStoryText({
@@ -797,13 +980,45 @@ export default function MemoryBook() {
       return;
     }
 
-    await updateTripData(trip.id, {
-      memoryBook: {
-        ...(trip?.memoryBook || {}),
-        generatedPages: pages,
-        generatedAt: new Date().toISOString(),
-      },
-    });
+    if (token) {
+      try {
+        const response = await fetch('http://localhost:5000/api/memory-book/generate-story', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ pages: pagePayloads }),
+        });
+
+        const data = await response.json();
+        if (response.ok && Array.isArray(data.stories)) {
+          pages.forEach((page, index) => {
+            if (typeof data.stories[index] === 'string' && data.stories[index].trim()) {
+              page.story = data.stories[index].trim();
+            }
+          });
+        }
+      } catch {
+        // Keep local fallback story text if Gemini is unavailable.
+      }
+    }
+
+    const nextMemoryBook = await memoryBookStorage.updateTripMemoryBook(trip.id, (current) => ({
+      ...current,
+      dayImages,
+      dayCaptions,
+      generatedPages: pages,
+      generatedAt: new Date().toISOString(),
+    }));
+
+    try {
+      await updateTripData(trip.id, {
+        memoryBook: buildMemoryBookMeta(nextMemoryBook),
+      });
+    } catch {
+      // Avoid blocking book creation when metadata sync fails.
+    }
 
     setBookPages(pages);
     setIsGenerating(false);
@@ -838,8 +1053,10 @@ export default function MemoryBook() {
     <SetupStep
       trip={trip}
       dayImages={dayImages}
+      dayCaptions={dayCaptions}
       onAddImagesForDay={addImagesForDay}
       onRemoveImageForDay={removeImageForDay}
+      onCaptionChange={updateCaptionForDay}
       onCreateBook={createBook}
       isGenerating={isGenerating}
     />

@@ -10,7 +10,14 @@ const readTrips = (userId) => {
 };
 
 const writeTrips = (userId, trips) => {
-  localStorage.setItem(getStorageKey(userId), JSON.stringify(trips));
+  try {
+    localStorage.setItem(getStorageKey(userId), JSON.stringify(trips));
+  } catch (error) {
+    if (error?.name === 'QuotaExceededError') {
+      throw new Error('Browser storage is full. Large trip assets are being moved out of local storage. Please retry this action.');
+    }
+    throw error;
+  }
 };
 
 export const tripService = {
