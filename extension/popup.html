@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Le Voyage</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Auth Section -->
+    <div id="auth-section">
+      <div class="header">
+        <div class="logo">
+          <div class="logo-icon">W</div>
+          <span class="logo-text">WAYFARER</span>
+        </div>
+        <p class="subtitle">Save travel places from anywhere</p>
+      </div>
+
+      <div id="login-form">
+        <input type="email" id="email" placeholder="Email" autocomplete="email" />
+        <input type="password" id="password" placeholder="Password" autocomplete="current-password" />
+        <button id="login-btn" class="btn-primary">Log In</button>
+        <p id="auth-error" class="error hidden"></p>
+      </div>
+    </div>
+
+    <!-- Main Section (shown after login) -->
+    <div id="main-section" class="hidden">
+      <div class="header">
+        <div class="header-row">
+          <div class="logo">
+            <div class="logo-icon">W</div>
+            <span class="logo-text">WAYFARER</span>
+          </div>
+          <button id="logout-btn" class="btn-ghost" title="Log out">✕</button>
+        </div>
+        <p class="status-text" id="user-name"></p>
+      </div>
+
+      <!-- Current Page Info -->
+      <div id="page-info" class="card">
+        <div class="card-label">DETECTED PAGE</div>
+        <p id="page-title" class="page-title">No page detected</p>
+        <span id="platform-badge" class="badge">web</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="actions">
+        <button id="analyze-btn" class="btn-primary btn-large">
+          <span class="btn-icon">✦</span>
+          Analyze This Place
+        </button>
+      </div>
+
+      <!-- Optional context -->
+      <div class="context-input">
+        <textarea id="user-caption" placeholder="Add context... e.g. 'The waterfall shown at 2:30'" rows="2"></textarea>
+      </div>
+
+      <!-- Analysis Result -->
+      <div id="result-section" class="hidden">
+        <div class="result-card">
+          <div id="result-image-wrapper" class="result-image hidden">
+            <img id="result-image" alt="" />
+          </div>
+          <h3 id="result-name" class="result-name"></h3>
+          <p id="result-desc" class="result-desc"></p>
+          
+          <div class="result-meta">
+            <div class="meta-item">
+              <span class="meta-label">📍 Location</span>
+              <span id="result-location" class="meta-value"></span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">🏷 Category</span>
+              <span id="result-category" class="meta-value"></span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">🗓 Best Time</span>
+              <span id="result-time" class="meta-value"></span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">💰 Budget</span>
+              <span id="result-budget" class="meta-value"></span>
+            </div>
+          </div>
+
+          <div id="result-highlights" class="highlights"></div>
+
+          <p id="result-summary" class="ai-summary"></p>
+
+          <button id="save-btn" class="btn-primary btn-large">
+            <span class="btn-icon">♡</span>
+            Save to My Places
+          </button>
+
+          <p id="save-status" class="status-msg hidden"></p>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div id="loading" class="hidden">
+        <div class="loader"></div>
+        <p class="loading-text">AI is analyzing this place...</p>
+      </div>
+
+      <!-- Error State -->
+      <p id="error-msg" class="error hidden"></p>
+
+      <!-- Saved Places Count -->
+      <div id="saved-count" class="saved-footer hidden">
+        <a href="#" id="open-dashboard">View all saved places on dashboard →</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
