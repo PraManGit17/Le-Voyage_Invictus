@@ -36,7 +36,7 @@
 
 // module.exports = { planTrip };
 
-const { generateTripData } = require("../services/travelAgent");
+const { generateTripData } = require("../agents/travelAgent");
 
 const planTrip = async (req, res) => {
   try {

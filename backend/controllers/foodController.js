@@ -1,4 +1,4 @@
-const { generateTripData } = require("../services/travelAgent");
+const { generateTripData } = require("../agents/travelAgent");
 
 const generateFoodOptions = async (req, res) => {
 

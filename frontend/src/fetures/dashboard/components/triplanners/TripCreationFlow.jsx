@@ -7,6 +7,8 @@ import Stage4Discover from "./Stages/Stage4Discover.jsx";
 import Stage5Food from "./Stages/Stage5Food";
 import Stage6Accommodation from "./Stages/Stage6Accommodation";
 import Stage7Special from "./Stages/Stage7Special";
+import GeneratedItinerary from "./GeneratedItinerarySolo.jsx";
+
 
 const STAGE_LABELS = ["States", "Cities", "Vibe", "Discover", "Food", "Stay & Go", "Final"];
 
@@ -14,22 +16,6 @@ export default function TripCreationFlow() {
   const [stage, setStage] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [dates, setDates] = useState([]);
-  // const [data, setData] = useState({
-  // //   states: [], cities: [], tripTypes: [], food: [], accom: [], travel: [], specialNotes: "",
-  // // });
-  // const [data, setData] = useState({
-  //   states: [],
-  //   cities: [],
-  //   tripTypes: [],
-  //   discoveries: [],   // ⭐ NEW
-  //   food: [],
-  //   accom: [],
-  //   travel: [],
-  //   specialNotes: ""
-  // });
-
-  // const [discoveries, setDiscoveries] = useState(null);
-  // const sectionRef = useRef(null);
 
   const [data, setData] = useState({
     states: [],
@@ -40,9 +26,9 @@ export default function TripCreationFlow() {
     accom: [],
     travel: [],
     dates: [],
-    specialNotes: ""
+    specialNotes: "",
+    budget: 20000
   });
-
   const [discoveries, setDiscoveries] = useState(null);
   const [foodOptions, setFoodOptions] = useState(null);
 
@@ -91,7 +77,6 @@ export default function TripCreationFlow() {
     if (stage < 7) setStage(s => s + 1);
   };
 
-  // const handleBack = () => { if (stage > 1) setStage(s => s - 1); };
   const handleBack = () => {
     if (stage === 5) {
       setFoodOptions(null)
@@ -99,36 +84,38 @@ export default function TripCreationFlow() {
 
     if (stage > 1) setStage(s => s - 1);
   };
-  const handleSubmit = () => setSubmitted(true);
-
-  if (submitted) {
-    return (
-      <section className="min-h-screen bg-[#050505] flex items-center justify-center px-8 py-24 inter">
-        <div className="text-center max-w-xl bg-white/5 backdrop-blur-xl border border-white/10 p-12 rounded-[2rem] shadow-2xl">
-          <div className="text-6xl mb-8">✈️</div>
-          <h2 className="bebas-neue text-6xl text-white mb-6 tracking-wide">TRIP CRAFTED</h2>
-          <p className="text-white/60 mb-10 playfair-display italic text-lg">Your personalized India itinerary is being generated.</p>
-          <button onClick={() => { setSubmitted(false); setStage(1); }} className="text-[#FFC107] text-xs uppercase tracking-[0.3em] font-bold border-b border-[#FFC107] pb-1">
-            Start a new adventure
-          </button>
-        </div>
-      </section>
-    );
-  }
 
 
-  // useEffect(() => {
-  //   const saved = localStorage.getItem("tripData")
-  //   const savedStage = localStorage.getItem("tripStage")
+  const handleSubmit = async () => {
+    try {
 
-  //   if (saved) {
-  //     setData(JSON.parse(saved))
-  //   }
+      const tripPayload = {
+        ...data,
+        homeCity: "Mumbai"
+      };
 
-  //   if (savedStage) {
-  //     setStage(Number(savedStage))
-  //   }
-  // }, [])
+      const res = await fetch("http://localhost:5000/api/itinerary/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          tripData: tripPayload
+        })
+      });
+
+      const result = await res.json();
+
+      // Save itinerary to local storage
+      localStorage.setItem("generatedItinerary", JSON.stringify(result));
+
+      setSubmitted(true);
+
+    } catch (error) {
+      console.error("Failed to generate itinerary", error);
+    }
+  };
+
 
   useEffect(() => {
     const saved = localStorage.getItem("tripData");
@@ -148,18 +135,23 @@ export default function TripCreationFlow() {
     }
   }, []);
 
-
-  // useEffect(() => {
-  //   const savedStage = localStorage.getItem("tripStage")
-
-  //   console.log(data, '-', savedStage)
-  // }, [data])
-
-
   useEffect(() => {
     localStorage.setItem("tripData", JSON.stringify(data))
     localStorage.setItem("tripStage", stage)
   }, [data, stage])
+
+
+  if (submitted) {
+    return (
+      <GeneratedItinerary
+        onReset={() => {
+          setSubmitted(false);
+          setStage(1);
+          localStorage.removeItem("generatedItinerary");
+        }}
+      />
+    );
+  }
   return (
     <section ref={sectionRef} id="solo-trip-flow" className="min-h-screen bg-[#0a0a0a] px-4 md:px-8 py-20 inter">
       <div className="max-w-5xl mx-auto">
