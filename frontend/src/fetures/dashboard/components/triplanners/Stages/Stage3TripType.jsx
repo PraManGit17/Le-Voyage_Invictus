@@ -13,10 +13,10 @@ export default function Stage3TripType({ selected, onChange }) {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 inter">
       {/* Header Section */}
       <div className="mb-8">
-        <h3 className="bebas-neue text-4xl text-white mb-2 tracking-wide">
+        <h3 className="bebas-neue text-4xl text-slate-900 mb-2 tracking-wide">
           WHAT'S YOUR VIBE?
         </h3>
-        <p className="text-white/60 text-sm font-light tracking-wide">
+        <p className="text-slate-600 text-sm font-light tracking-wide">
           Select the experiences you want on this trip — pick as many as you like.
         </p>
       </div>
@@ -31,7 +31,7 @@ export default function Stage3TripType({ selected, onChange }) {
       )}
 
       {/* Vibes Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[480px] overflow-y-auto pr-3 no-scrollbar">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-120 overflow-y-auto pr-3 no-scrollbar">
         {TRIP_TYPES.map((type) => {
           const isSelected = selected.includes(type.id);
           
@@ -41,15 +41,15 @@ export default function Stage3TripType({ selected, onChange }) {
               onClick={() => toggle(type.id)}
               className={`group relative flex items-center gap-5 p-5 rounded-2xl border-2 transition-all duration-300 text-left ${
                 isSelected
-                  ? "bg-[#FFC107]/10 border-[#FFC107] shadow-[0_10px_30px_rgba(255,193,7,0.15)] scale-[1.02]"
-                  : "bg-[#151515] border-white/5 hover:border-white/20 hover:bg-[#1a1a1a]"
+                  ? "bg-[#FFC107]/10 border-[#FFC107] shadow-[0_10px_30px_rgba(255,193,7,0.12)] scale-[1.02]"
+                  : "bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/50"
               }`}
             >
               {/* Icon Container */}
               <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-3xl transition-all duration-500 ${
                 isSelected 
                   ? "bg-[#FFC107] text-black shadow-[0_0_20px_rgba(255,193,7,0.4)]" 
-                  : "bg-white/5 text-white/40 group-hover:text-white"
+                  : "bg-amber-50 text-slate-500 group-hover:text-slate-900"
               }`}>
                 {type.icon}
               </div>
@@ -57,12 +57,12 @@ export default function Stage3TripType({ selected, onChange }) {
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <p className={`text-base font-bold transition-colors ${
-                  isSelected ? "text-[#FFC107]" : "text-white"
+                  isSelected ? "text-amber-700" : "text-slate-900"
                 }`}>
                   {type.label}
                 </p>
                 <p className={`text-xs font-light leading-relaxed mt-0.5 ${
-                  isSelected ? "text-white/70" : "text-white/30"
+                  isSelected ? "text-slate-700" : "text-slate-500"
                 }`}>
                   {type.desc}
                 </p>
@@ -82,8 +82,8 @@ export default function Stage3TripType({ selected, onChange }) {
       </div>
 
       {/* Empty State Footer (Optional) */}
-      <div className="mt-8 pt-6 border-t border-white/5">
-        <p className="playfair-display italic text-white/20 text-sm text-center">
+      <div className="mt-8 pt-6 border-t border-amber-100">
+        <p className="playfair-display italic text-slate-400 text-sm text-center">
           Mix and match to create your perfect Indian odyssey.
         </p>
       </div>

@@ -43,6 +43,7 @@ const Sidebar = () => {
   const menuItems = [
     { icon: <LayoutDashboard size={20} />, label: 'Dashboard', path: '/dashboard' },
     { icon: <Compass size={20} />, label: 'Discovery', path: '/discovery' },
+    { icon: <Users size={20} />, label: 'Group Trips', path: '/groups' },
     { icon: <Heart size={20} />, label: 'Saved Places', path: '/saved-places' },
     { icon: <BookOpen size={20} />, label: 'Memory Book', path: '/memory-book' },
     { icon: <Users size={20} />, label: 'Travel Workspace', path: '/workspace' },
@@ -55,8 +56,8 @@ const Sidebar = () => {
 
   return (
     <div 
-      className="h-screen w-64 bg-white/95 backdrop-blur-sm text-slate-800 flex flex-col border-r border-amber-100 shadow-lg" 
-      style={{ backgroundColor: '#f5efe6' }}
+      className="h-screen w-64 bg-white/95 backdrop-blur-sm text-slate-800 flex flex-col border-r border-amber-200 shadow-lg" 
+      style={{ backgroundColor: '#efe3d2' }}
     >
       {/* Header */}
       <div className="flex-shrink-0 p-6 border-b border-amber-200">

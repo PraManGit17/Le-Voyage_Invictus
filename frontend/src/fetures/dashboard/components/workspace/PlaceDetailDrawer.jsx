@@ -1,9 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MapPin, Clock, Wallet, Sparkles, Lightbulb, Star, Info, Image } from 'lucide-react';
+import { X, MapPin, Clock, Wallet, Sparkles, Lightbulb, Star, Info, Image, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const PlaceDetailDrawer = ({ place, itinerary, isOpen, onClose }) => {
+const PlaceDetailDrawer = ({ place, itinerary, places = [], onNavigate, isOpen, onClose }) => {
   if (!place) return null;
+
+  const selectedIndex = places.findIndex((entry) => entry.id === place.id);
+  const hasMultiplePlaces = places.length > 1;
 
   return (
     <AnimatePresence>
@@ -25,13 +28,38 @@ const PlaceDetailDrawer = ({ place, itinerary, isOpen, onClose }) => {
             className="fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-2xl overflow-y-auto"
           >
             <div className="sticky top-0 bg-white/90 backdrop-blur-md z-10 p-5 flex items-center justify-between border-b border-slate-100">
-              <h2 className="text-lg font-black text-slate-900 truncate pr-4">{place.name}</h2>
-              <button
-                onClick={onClose}
-                className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors shrink-0"
-              >
-                <X size={18} className="text-slate-600" />
-              </button>
+              <div className="min-w-0">
+                <h2 className="text-lg font-black text-slate-900 truncate pr-4">{place.name}</h2>
+                {selectedIndex >= 0 ? (
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 mt-1">Place {selectedIndex + 1} of {places.length}</p>
+                ) : null}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {hasMultiplePlaces && (
+                  <>
+                    <button
+                      onClick={() => onNavigate?.('prev')}
+                      className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+                      aria-label="Previous place"
+                    >
+                      <ChevronLeft size={18} className="text-slate-600" />
+                    </button>
+                    <button
+                      onClick={() => onNavigate?.('next')}
+                      className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+                      aria-label="Next place"
+                    >
+                      <ChevronRight size={18} className="text-slate-600" />
+                    </button>
+                  </>
+                )}
+                <button
+                  onClick={onClose}
+                  className="h-9 w-9 rounded-xl bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors"
+                >
+                  <X size={18} className="text-slate-600" />
+                </button>
+              </div>
             </div>
 
             <div className="p-5 space-y-6">

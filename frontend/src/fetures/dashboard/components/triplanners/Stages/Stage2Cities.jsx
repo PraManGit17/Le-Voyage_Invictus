@@ -27,10 +27,10 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 inter">
       {/* Header Section */}
       <div className="mb-8">
-        <h3 className="bebas-neue text-4xl text-white mb-2 tracking-wide">
+        <h3 className="bebas-neue text-4xl text-slate-900 mb-2 tracking-wide">
           PICK YOUR CITIES
         </h3>
-        <p className="text-white/60 text-sm font-light tracking-wide">
+        <p className="text-slate-600 text-sm font-light tracking-wide">
           Select the specific destinations for your curated itinerary.
         </p>
       </div>
@@ -76,7 +76,7 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
                 <p className="text-[11px] font-black text-[#FFC107] uppercase tracking-[0.4em]">
                   {state.name}
                 </p>
-                <div className="flex-1 h-px bg-white/10" />
+                <div className="flex-1 h-px bg-amber-100" />
               </div>
 
               {/* Cities Grid */}
@@ -88,19 +88,19 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
                       key={city.id}
                       onClick={() => toggle(city.id)}
                       className={`group relative flex flex-col p-5 rounded-2xl border-2 transition-all duration-300 text-left ${isSelected
-                          ? "bg-[#FFC107]/10 border-[#FFC107] shadow-[0_10px_30px_rgba(255,193,7,0.15)] scale-[1.01]"
-                          : "bg-[#151515] border-white/5 hover:border-white/20 hover:bg-[#1a1a1a]"
+                          ? "bg-[#FFC107]/10 border-[#FFC107] shadow-[0_10px_30px_rgba(255,193,7,0.12)] scale-[1.01]"
+                          : "bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/50"
                         }`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="min-w-0">
                           <h4
-                            className={`text-lg font-bold transition-colors ${isSelected ? "text-[#FFC107]" : "text-white"
+                            className={`text-lg font-bold transition-colors ${isSelected ? "text-amber-700" : "text-slate-900"
                               }`}
                           >
                             {city.name}
                           </h4>
-                          <p className="text-[10px] text-white/30 font-bold uppercase tracking-wider">
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                             ★ {city.rating} Rating
                           </p>
                         </div>
@@ -109,7 +109,7 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
                         <div
                           className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${isSelected
                               ? "bg-[#FFC107] border-[#FFC107]"
-                              : "border-white/10"
+                              : "border-slate-300 bg-white"
                             }`}
                         >
                           {isSelected && (
@@ -127,7 +127,7 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
                         </div>
                       </div>
 
-                      <p className="text-sm text-white/50 font-light leading-relaxed mb-4 line-clamp-2">
+                      <p className="text-sm text-slate-600 font-light leading-relaxed mb-4 line-clamp-2">
                         {city.description}
                       </p>
 
@@ -138,7 +138,7 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
                             key={tag}
                             className={`text-[9px] px-2 py-1 rounded font-bold uppercase tracking-tighter ${isSelected
                                 ? "bg-[#FFC107] text-black"
-                                : "bg-white/5 text-white/40 group-hover:text-white/60"
+                                : "bg-slate-100 text-slate-500 group-hover:text-slate-700"
                               }`}
                           >
                             {tag}
@@ -154,9 +154,9 @@ export default function Stage2Cities({ selectedStates, selectedCities, onChange 
         })}
 
         {stateIds.length === 0 && (
-          <div className="text-center py-20 bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
+          <div className="text-center py-20 bg-amber-50/60 rounded-3xl border border-dashed border-amber-200">
             <span className="text-5xl mb-4 block opacity-20">📍</span>
-            <p className="playfair-display italic text-white/40 text-xl">
+            <p className="playfair-display italic text-slate-500 text-xl">
               Please select a state to view available cities
             </p>
           </div>

@@ -57,6 +57,15 @@ export const useTripManager = () => {
     return updatedTrip;
   }, []);
 
+  const updateTripData = useCallback(async (tripId, partialUpdate) => {
+    const updatedTrip = await tripService.updateTrip(DEFAULT_USER_ID, tripId, partialUpdate);
+    if (!updatedTrip) {
+      return null;
+    }
+    setTrips((prevTrips) => prevTrips.map((trip) => (trip.id === tripId ? updatedTrip : trip)));
+    return updatedTrip;
+  }, []);
+
   const activeTrip = useMemo(
     () => trips.find((trip) => trip.id === activeTripId) || null,
     [activeTripId, trips],
@@ -78,6 +87,7 @@ export const useTripManager = () => {
     error,
     createTrip,
     updateTripNotes,
+    updateTripData,
     reloadTrips: loadTrips,
   };
 };

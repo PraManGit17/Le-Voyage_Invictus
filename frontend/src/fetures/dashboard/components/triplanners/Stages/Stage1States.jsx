@@ -30,10 +30,10 @@ export default function Stage1States({ selected, onChange }) {
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 inter">
       {/* Header Section */}
       <div className="mb-8">
-        <h3 className="bebas-neue text-4xl text-white mb-2 tracking-wide">
+        <h3 className="bebas-neue text-4xl text-slate-900 mb-2 tracking-wide">
           WHERE DO YOU WANT TO GO?
         </h3>
-        <p className="text-white/60 text-sm font-light tracking-wide">
+        <p className="text-slate-600 text-sm font-light tracking-wide">
           Select your favorite states to begin your adventure.
         </p>
       </div>
@@ -50,7 +50,7 @@ export default function Stage1States({ selected, onChange }) {
           placeholder="Search states, regions..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full bg-[#1a1a1a] text-white placeholder:text-white/30 text-base pl-14 pr-6 py-4 rounded-2xl border border-white/10 focus:outline-none focus:border-[#FFC107] focus:ring-4 focus:ring-[#FFC107]/10 transition-all"
+          className="w-full bg-[#fffaf2] text-slate-900 placeholder:text-slate-400 text-base pl-14 pr-6 py-4 rounded-2xl border border-amber-200 focus:outline-none focus:border-[#FFC107] focus:ring-4 focus:ring-[#FFC107]/10 transition-all"
         />
       </div>
 
@@ -92,8 +92,8 @@ export default function Stage1States({ selected, onChange }) {
                     key={state.id}
                     onClick={() => toggle(state)}
                     className={`group relative flex items-center gap-4 p-5 rounded-2xl border-2 transition-all duration-300 text-left ${isSelected
-                      ? "bg-[#FFC107]/10 border-[#FFC107] shadow-[0_10px_30px_rgba(255,193,7,0.15)] scale-[1.02]"
-                      : "bg-[#151515] border-white/5 hover:border-[#FFC107]/40 hover:bg-[#1a1a1a]"
+                      ? "bg-[#FFC107]/10 border-[#FFC107] shadow-[0_10px_30px_rgba(255,193,7,0.12)] scale-[1.02]"
+                      : "bg-white border-slate-200 hover:border-[#FFC107]/40 hover:bg-amber-50/50"
                       }`}
                   >
                     {/* Removed grayscale so emoji is colorful */}
@@ -101,11 +101,11 @@ export default function Stage1States({ selected, onChange }) {
                       {state.emoji}
                     </span>
                     <div className="min-w-0">
-                      <p className={`text-base font-bold truncate transition-colors ${isSelected ? "text-[#FFC107]" : "text-white"
+                      <p className={`text-base font-bold truncate transition-colors ${isSelected ? "text-amber-700" : "text-slate-900"
                         }`}>
                         {state.name}
                       </p>
-                      <p className={`text-[10px] font-bold tracking-wider ${isSelected ? "text-[#FFC107]/60" : "text-white/30"
+                      <p className={`text-[10px] font-bold tracking-wider ${isSelected ? "text-amber-600/70" : "text-slate-400"
                         }`}>
                         {citiesCount} DESTINATIONS
                       </p>

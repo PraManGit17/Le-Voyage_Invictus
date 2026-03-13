@@ -17,6 +17,7 @@ const categoryColors = {
 
 const parseFee = (feeStr) => {
   if (!feeStr) return 0;
+  if (typeof feeStr === 'number') return feeStr;
   const match = feeStr.match(/₹([\d,]+)/);
   return match ? parseInt(match[1].replace(',', ''), 10) : 0;
 };
@@ -46,13 +47,15 @@ const RouteBudgetTracker = ({ itinerary, tripBudget }) => {
     );
   }
 
-  const allPlaces = itinerary.days.flatMap((d) => d.places);
+  const days = Array.isArray(itinerary?.days) ? itinerary.days : [];
+  const allPlaces = days.flatMap((day) => (Array.isArray(day?.places) ? day.places : []));
+  const allActivities = days.flatMap((day) => (Array.isArray(day?.activities) ? day.activities : []));
   const totalEntry = allPlaces.reduce((sum, p) => sum + parseFee(p.entryFee), 0);
 
   const perDayTransport = 800;
   const perDayFood = 1200;
   const perDayStay = 2500;
-  const numDays = itinerary.days.length;
+  const numDays = Math.max(days.length, 1);
   const totalTransport = perDayTransport * numDays;
   const totalFood = perDayFood * numDays;
   const totalStay = perDayStay * numDays;
@@ -76,7 +79,7 @@ const RouteBudgetTracker = ({ itinerary, tripBudget }) => {
           <Wallet size={18} className="text-blue-400" />
           <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400">Route Budget</h3>
         </div>
-        <p className="text-xl font-black mb-4">{itinerary.name}</p>
+        <p className="text-xl font-black mb-4">{itinerary.name || 'Generated Trip Plan'}</p>
 
         <div className="flex justify-between items-end mb-2">
           <p className="text-2xl font-black">₹{estimated.toLocaleString()}</p>
@@ -112,14 +115,15 @@ const RouteBudgetTracker = ({ itinerary, tripBudget }) => {
         <div className="mt-6 pt-4 border-t border-white/10">
           <p className="text-[9px] uppercase tracking-widest font-bold text-slate-500 mb-2">Per-Day Breakdown</p>
           <div className="grid grid-cols-3 gap-2">
-            {itinerary.days.map((day) => {
-              const dayEntry = day.places.reduce((s, p) => s + parseFee(p.entryFee), 0);
+            {days.map((day) => {
+              const dayPlaces = Array.isArray(day?.places) ? day.places : [];
+              const dayEntry = dayPlaces.reduce((s, p) => s + parseFee(p.entryFee), 0);
               const dayTotal = dayEntry + perDayTransport + perDayFood + perDayStay;
               return (
                 <div key={day.day} className="p-2 bg-white/5 rounded-xl border border-white/10 text-center">
                   <p className="text-[9px] font-bold text-slate-400">Day {day.day}</p>
                   <p className="text-sm font-black">₹{dayTotal.toLocaleString()}</p>
-                  <p className="text-[8px] text-slate-500">{day.places.length} stops</p>
+                  <p className="text-[8px] text-slate-500">{dayPlaces.length || (day.activities?.length || 0)} stops</p>
                 </div>
               );
             })}
@@ -133,7 +137,7 @@ const RouteBudgetTracker = ({ itinerary, tripBudget }) => {
           </div>
           <div className="p-3 bg-white/5 rounded-xl border border-white/10">
             <p className="text-[9px] uppercase font-bold text-slate-400">Places</p>
-            <p className="font-bold">{allPlaces.length} stops</p>
+            <p className="font-bold">{allPlaces.length || allActivities.length} stops</p>
           </div>
         </div>
       </div>

@@ -98,20 +98,32 @@
 
 export default function Stage5Food({ selected, onChange, foodOptions }) {
 
+  const normalizeFoodName = (value = "") =>
+    value
+      .split(/\s+/)
+      .filter(Boolean)
+      .filter((word, index, source) => index === 0 || word.toLowerCase() !== source[index - 1].toLowerCase())
+      .join(" ")
+      .trim();
+
+  const normalizeFoodKey = (value = "") => normalizeFoodName(value).toLowerCase();
+
   const toggle = (food) => {
 
-    const exists = selected.find(
-      f => f.name === food.name && f.city === food.city
-    );
+    const exists = selected.find((item) => normalizeFoodKey(item.name) === food.key);
 
     if (exists) {
-      onChange(
-        selected.filter(
-          f => !(f.name === food.name && f.city === food.city)
-        )
-      );
+      onChange(selected.filter((item) => normalizeFoodKey(item.name) !== food.key));
     } else {
-      onChange([...selected, food]);
+      onChange([
+        ...selected,
+        {
+          ...food,
+          name: food.name,
+          city: food.cities[0],
+          cities: food.cities,
+        },
+      ]);
     }
   };
 
@@ -119,10 +131,10 @@ export default function Stage5Food({ selected, onChange, foodOptions }) {
   if (!foodOptions) {
     return (
       <div className="text-center py-32">
-        <h3 className="text-white text-2xl mb-4">
+        <h3 className="text-slate-900 text-2xl mb-4">
           Discovering local flavours 🍜
         </h3>
-        <p className="text-white/40">
+        <p className="text-slate-500">
           Finding the best dishes from your destinations...
         </p>
       </div>
@@ -130,28 +142,50 @@ export default function Stage5Food({ selected, onChange, foodOptions }) {
   }
 
   // Convert AI response to UI format
-  const foods =
-    foodOptions?.cities?.flatMap(city =>
-      city.foods.map((food, index) => ({
-        id: `${city.city}-${index}`,
-        city: city.city,
-        name: food.name,
-        category: food.category,
-        description: food.description,
-        priceRange: food.priceRange,
-        icon: getFoodIcon(food.category)
-      }))
-    ) || [];
+  const foods = Array.from(
+    (foodOptions?.cities || []).reduce((foodMap, city) => {
+      city.foods.forEach((food) => {
+        const cleanedName = normalizeFoodName(food.name);
+        const key = normalizeFoodKey(cleanedName);
+
+        if (!key) {
+          return;
+        }
+
+        if (!foodMap.has(key)) {
+          foodMap.set(key, {
+            id: key,
+            key,
+            name: cleanedName,
+            category: food.category,
+            description: food.description,
+            priceRange: food.priceRange,
+            icon: getFoodIcon(food.category),
+            cities: [city.city],
+          });
+          return;
+        }
+
+        const existing = foodMap.get(key);
+        foodMap.set(key, {
+          ...existing,
+          cities: [...new Set([...existing.cities, city.city])],
+        });
+      });
+
+      return foodMap;
+    }, new Map()).values()
+  );
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 inter">
 
       {/* Header */}
       <div className="mb-8">
-        <h3 className="bebas-neue text-4xl text-white mb-2 tracking-wide">
+        <h3 className="bebas-neue text-4xl text-slate-900 mb-2 tracking-wide">
           FOOD FOR THE SOUL
         </h3>
-        <p className="text-white/60 text-sm font-light tracking-wide">
+        <p className="text-slate-600 text-sm font-light tracking-wide">
           India is a paradise of flavours — what do you want to savour?
         </p>
       </div>
@@ -161,7 +195,7 @@ export default function Stage5Food({ selected, onChange, foodOptions }) {
         <div className="mb-6 flex items-center gap-2">
           <div className="h-1 w-1 rounded-full bg-[#FFC107] animate-pulse" />
           <span className="text-[#FFC107] text-[10px] font-black uppercase tracking-[0.3em]">
-            {selected.length} Flavours Selected
+            {selected.length} Unique Flavours Selected
           </span>
         </div>
       )}
@@ -171,9 +205,7 @@ export default function Stage5Food({ selected, onChange, foodOptions }) {
 
         {foods.map((food) => {
 
-          const isSelected = selected.some(
-            f => f.name === food.name && f.city === food.city
-          );
+          const isSelected = selected.some((item) => normalizeFoodKey(item.name) === food.key);
 
           return (
             <button
@@ -182,7 +214,7 @@ export default function Stage5Food({ selected, onChange, foodOptions }) {
               className={`group relative flex flex-col p-6 rounded-2xl border-2 transition-all duration-500 text-left ${
                 isSelected
                   ? "bg-[#FFC107]/10 border-[#FFC107] shadow-[0_10px_30px_rgba(255,193,7,0.15)] scale-[1.02]"
-                  : "bg-[#151515] border-white/5 hover:border-white/20 hover:bg-[#1a1a1a]"
+                  : "bg-white border-slate-200 hover:border-amber-300 hover:bg-amber-50/50"
               }`}
             >
 
@@ -207,15 +239,19 @@ export default function Stage5Food({ selected, onChange, foodOptions }) {
               <div className="mt-auto">
                 <p
                   className={`text-base font-bold transition-colors ${
-                    isSelected ? "text-[#FFC107]" : "text-white"
+                    isSelected ? "text-amber-700" : "text-slate-900"
                   }`}
                 >
                   {food.name}
                 </p>
 
+                <p className="mt-2 text-[10px] font-black uppercase tracking-[0.24em] text-[#FFC107]/80">
+                  {food.cities.join(" • ")}
+                </p>
+
                 <p
                   className={`text-[11px] font-light leading-relaxed mt-1 line-clamp-2 transition-colors ${
-                    isSelected ? "text-white/80" : "text-white/30"
+                    isSelected ? "text-slate-700" : "text-slate-500"
                   }`}
                 >
                   {food.description}
@@ -236,8 +272,8 @@ export default function Stage5Food({ selected, onChange, foodOptions }) {
       </div>
 
       {/* Footer */}
-      <div className="mt-10 py-6 border-t border-white/5 text-center">
-        <p className="playfair-display italic text-white/20 text-sm">
+      <div className="mt-10 py-6 border-t border-amber-100 text-center">
+        <p className="playfair-display italic text-slate-400 text-sm">
           "From street-side stalls to royal kitchens, every bite tells a story."
         </p>
       </div>

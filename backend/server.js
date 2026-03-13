@@ -21,6 +21,7 @@ const foodRoutes = require("./routes/foodRoutes");
 const accommodationRoutes = require("./routes/accommodationRoutes");
 const busearch =  require("./routes/busSearchRoutes")
 const chatRoutes = require("./routes/chatRoutes");
+const groupTripRoutes = require("./routes/groupTripRoutes");
 
 const app = express()
 
@@ -43,6 +44,7 @@ app.use("/api/food-stalls", foodRoutes);
 app.use("/api/accommodation", accommodationRoutes);
 app.use("/api/bus-search", busearch);
 app.use("/api/chat",chatRoutes);
+app.use("/api/group-trips", groupTripRoutes);
 
 
 app.listen(process.env.PORT, () => {

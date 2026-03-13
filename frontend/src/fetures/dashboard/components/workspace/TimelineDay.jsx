@@ -13,7 +13,10 @@ const TimelineDay = ({ day, activities = [], places = [], selectedPlaceId, onSel
   const findPlaceForActivity = (activity) => {
     if (!places.length) return null;
     return places.find(
-      (p) => p.name === activity.title || p.id === activity.placeId,
+      (p) =>
+        p.name === activity.title ||
+        p.id === activity.placeId ||
+        (activity.location && p.address && p.address.toLowerCase() === activity.location.toLowerCase()),
     );
   };
 
@@ -41,7 +44,7 @@ const TimelineDay = ({ day, activities = [], places = [], selectedPlaceId, onSel
                 onClick={() => linkedPlace && onSelectPlace?.(linkedPlace.id)}
                 className={`bg-white p-6 rounded-4xl border shadow-sm hover:shadow-xl hover:shadow-blue-500/5 transition-all flex items-center gap-6 ${
                   linkedPlace ? 'cursor-pointer' : ''
-                } ${isSelected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-100'}`}
+                } ${isSelected ? 'border-blue-400 ring-2 ring-blue-100' : 'border-slate-200'}`}
               >
                 <div className={`h-14 w-14 rounded-2xl flex items-center justify-center ${
                   isSelected ? 'bg-blue-100 text-blue-600' : 'bg-slate-50 text-slate-300'

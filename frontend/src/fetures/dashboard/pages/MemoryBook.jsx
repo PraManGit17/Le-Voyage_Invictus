@@ -1,50 +1,20 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BookOpen, ChevronLeft, ChevronRight, Sparkles, MapPin,
-  Loader2, ImagePlus, X, Images, Trash2, PenLine, ArrowRight,
+  Loader2, Images, Trash2, ArrowRight,
 } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-
-const API_BASE = 'http://localhost:5000/api';
-
-const emptyEntry = () => ({ image: null, caption: '', location: '', description: '' });
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useTrips } from '../../../context/TripContext';
 
 // ═══════════════════════════════════════════════════════
-//  STEP 1 — Upload & describe images
+//  STEP 1 — Upload daily images (max 1 per day)
 // ═══════════════════════════════════════════════════════
-function SetupStep({ entries, setEntries, onCreateBook, isGenerating }) {
-  const fileRef = useRef(null);
-
-  const handleFiles = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    const valid = files.filter((f) => f.type.startsWith('image/') && f.size <= 10 * 1024 * 1024);
-
-    let loaded = 0;
-    const newEntries = [];
-    valid.forEach((file, i) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        newEntries[i] = { ...emptyEntry(), image: ev.target.result };
-        loaded++;
-        if (loaded === valid.length) {
-          setEntries((prev) => [...prev, ...newEntries.filter(Boolean)]);
-        }
-      };
-      reader.readAsDataURL(file);
-    });
-    e.target.value = '';
-  };
-
-  const update = (i, field, val) => {
-    setEntries((prev) => prev.map((e, idx) => (idx === i ? { ...e, [field]: val } : e)));
-  };
-
-  const remove = (i) => {
-    setEntries((prev) => prev.filter((_, idx) => idx !== i));
-  };
-
-  const hasImages = entries.some((e) => e.image);
+function SetupStep({ trip, dayImages, onAddImagesForDay, onRemoveImageForDay, onCreateBook, isGenerating }) {
+  const dayNumbers = useMemo(
+    () => Array.from({ length: Math.max(trip?.durationDays || 1, 1) }, (_, idx) => idx + 1),
+    [trip?.durationDays],
+  );
+  const hasImages = dayNumbers.some((day) => (dayImages[String(day)] || []).length > 0);
 
   return (
     <div className="min-h-screen bg-[#f5efe6] py-8 px-4">
@@ -54,89 +24,65 @@ function SetupStep({ entries, setEntries, onCreateBook, isGenerating }) {
           <BookOpen size={40} className="mx-auto mb-3 text-amber-600" strokeWidth={1.3} />
           <h1 className="text-2xl font-serif font-bold text-amber-900 mb-1">Create Your Memory Book</h1>
           <p className="text-sm text-amber-600/70 font-serif">
-            Upload your trip photos, add captions & descriptions, then create your book
+            Add up to 1 photo for each day. Your story will be generated from trip details automatically.
           </p>
         </div>
 
-        {/* Upload area */}
-        <button
-          onClick={() => fileRef.current?.click()}
-          className="w-full mb-6 py-8 rounded-xl border-2 border-dashed border-amber-300 bg-white/50 flex flex-col items-center gap-2 text-amber-500 hover:text-amber-700 hover:border-amber-400 hover:bg-amber-50/50 transition-all cursor-pointer"
-        >
-          <Images size={32} strokeWidth={1.5} />
-          <span className="text-sm font-serif font-semibold">Click to upload trip photos</span>
-          <span className="text-[11px] text-amber-400">Select multiple images at once • JPG, PNG up to 10MB each</span>
-        </button>
-        <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
-
-        {/* Image cards */}
-        {entries.length > 0 && (
-          <div className="space-y-4 mb-8">
-            {entries.map((entry, i) => (
-              <div key={i} className="bg-white rounded-xl border border-amber-200/80 shadow-sm overflow-hidden flex">
-                {/* Thumbnail */}
-                <div className="w-44 h-44 shrink-0 relative bg-amber-100">
-                  {entry.image ? (
-                    <>
-                      <img src={entry.image} alt="" className="w-full h-full object-cover" />
-                      <div className="absolute top-1.5 left-1.5 bg-black/50 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
-                        {i + 1}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-amber-300">
-                      <ImagePlus size={28} />
-                    </div>
-                  )}
+        <div className="space-y-4 mb-8">
+          {dayNumbers.map((day) => {
+            const images = dayImages[String(day)] || [];
+            return (
+              <div key={day} className="bg-white rounded-xl border border-amber-200/80 shadow-sm p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-sm font-bold text-amber-900">Day {day}</p>
+                    <p className="text-[11px] text-amber-500">Max 1 image for this day</p>
+                  </div>
+                  <label className="px-3 py-2 rounded-lg bg-amber-700 text-amber-50 text-xs font-bold cursor-pointer hover:bg-amber-800 transition-colors">
+                    <span className="inline-flex items-center gap-1.5"><Images size={14} />Add Images</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(event) => {
+                        const files = Array.from(event.target.files || []);
+                        onAddImagesForDay(day, files);
+                        event.target.value = '';
+                      }}
+                    />
+                  </label>
                 </div>
 
-                {/* Details */}
-                <div className="flex-1 p-4 flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                      Page {i + 1}
-                    </span>
-                    <button onClick={() => remove(i)} className="p-1 text-amber-300 hover:text-red-400 transition-colors">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-
-                  <input
-                    type="text"
-                    value={entry.caption}
-                    onChange={(e) => update(i, 'caption', e.target.value)}
-                    placeholder="Caption — e.g. 'Sunrise at Taj Mahal'"
-                    className="w-full bg-amber-50/50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-900 placeholder:text-amber-300 focus:outline-none focus:border-amber-400"
-                  />
-
-                  <div className="flex gap-2">
-                    <div className="flex items-center gap-1.5 flex-1">
-                      <MapPin size={13} className="text-amber-400 shrink-0" />
-                      <input
-                        type="text"
-                        value={entry.location}
-                        onChange={(e) => update(i, 'location', e.target.value)}
-                        placeholder="Location — e.g. 'Agra, India'"
-                        className="w-full bg-amber-50/50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-900 placeholder:text-amber-300 focus:outline-none focus:border-amber-400"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-1.5">
-                    <PenLine size={13} className="text-amber-400 shrink-0 mt-2.5" />
-                    <textarea
-                      value={entry.description}
-                      onChange={(e) => update(i, 'description', e.target.value)}
-                      placeholder="Description — e.g. 'We woke up at 5am to catch the sunrise, the marble glowed orange...'"
-                      rows={2}
-                      className="w-full bg-amber-50/50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-900 placeholder:text-amber-300 focus:outline-none focus:border-amber-400 resize-none"
-                    />
-                  </div>
+                <div className="grid grid-cols-1 gap-3">
+                  {(() => {
+                    const image = images[0];
+                    return (
+                      <div className="relative rounded-lg border border-amber-200 bg-amber-50/60 aspect-video overflow-hidden">
+                        {image ? (
+                          <>
+                            <img src={image} alt={`Day ${day} memory`} className="h-full w-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => onRemoveImageForDay(day, 0)}
+                              className="absolute top-2 right-2 h-7 w-7 rounded-full bg-white/90 text-red-500 flex items-center justify-center shadow"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </>
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-[11px] font-semibold text-amber-400">
+                            Empty slot
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
 
         {/* Create Book button */}
         {hasImages && (
@@ -160,7 +106,7 @@ function SetupStep({ entries, setEntries, onCreateBook, isGenerating }) {
               )}
             </button>
             <p className="mt-3 text-[11px] text-amber-400/70 font-serif italic">
-              {entries.length} {entries.length === 1 ? 'page' : 'pages'} • AI will write a story for each photo
+              The book content is auto-written using your trip plan and day-wise memories.
             </p>
           </div>
         )}
@@ -705,58 +651,179 @@ function BookView({ pages, onBack }) {
 //  Main Component — orchestrates setup → book
 // ═══════════════════════════════════════════════════════
 export default function MemoryBook() {
-  const { token } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { getTripById, updateTripData, trips } = useTrips();
+  const tripId = searchParams.get('tripId');
+  const trip = tripId ? getTripById(tripId) : trips[0] || null;
+
   const [step, setStep] = useState('setup'); // 'setup' | 'book'
-  const [entries, setEntries] = useState([]);
   const [bookPages, setBookPages] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const createBook = async () => {
-    const withImages = entries.filter((e) => e.image);
-    if (withImages.length === 0) return;
+  const dayImages = trip?.memoryBook?.dayImages || {};
 
-    const needStory = withImages.filter((e) => e.caption || e.description);
+  const getTripDayContext = (dayNumber) => {
+    const generatedDay = trip?.generatedPlan?.activityPlan?.days?.find((day) => Number(day.day) === dayNumber);
+    if (generatedDay) {
+      const stops = (generatedDay.activities || []).map((activity) => activity.activity).filter(Boolean);
+      return {
+        dayLabel: generatedDay.dayTitle || `Day ${dayNumber}`,
+        location: generatedDay.city || trip?.destinations?.join(', ') || 'your destination',
+        stops,
+        summary: generatedDay.theme || generatedDay.vibe || '',
+      };
+    }
+
+    const itineraryStops = (trip?.itinerary || [])
+      .filter((item) => Number(item.day) === dayNumber)
+      .map((item) => item.title)
+      .filter(Boolean);
+
+    return {
+      dayLabel: `Day ${dayNumber}`,
+      location: trip?.destinations?.join(', ') || 'your destination',
+      stops: itineraryStops,
+      summary: '',
+    };
+  };
+
+  const buildStoryText = ({ tripTitle, dayNumber, dayContext, imageIndex }) => {
+    const firstStops = dayContext.stops.slice(0, 3).join(', ');
+    const itineraryLine = firstStops
+      ? `We explored ${firstStops}${dayContext.stops.length > 3 ? ', and more' : ''}.`
+      : `We kept this day flexible and discovered local corners at our own pace.`;
+    const summaryLine = dayContext.summary ? `The mood of the day was ${dayContext.summary.toLowerCase()}.` : '';
+
+    return [
+      `This memory belongs to ${tripTitle}, Day ${dayNumber} in ${dayContext.location}.`,
+      itineraryLine,
+      summaryLine,
+      `Photo ${imageIndex + 1} captures one of the moments that made this day special.`,
+    ].filter(Boolean).join(' ');
+  };
+
+  const addImagesForDay = async (dayNumber, files) => {
+    if (!trip || !Array.isArray(files) || files.length === 0) {
+      return;
+    }
+
+    const dayKey = String(dayNumber);
+    const existing = dayImages[dayKey] || [];
+    const remainingSlots = Math.max(0, 1 - existing.length);
+    if (remainingSlots === 0) {
+      return;
+    }
+
+    const validFiles = files
+      .filter((file) => file?.type?.startsWith('image/') && file.size <= 10 * 1024 * 1024)
+      .slice(0, remainingSlots);
+
+    const encodedImages = await Promise.all(
+      validFiles.map(
+        (file) => new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(file);
+        }),
+      ),
+    );
+
+    const nextDayImages = {
+      ...dayImages,
+      [dayKey]: [...existing, ...encodedImages.filter(Boolean)].slice(0, 1),
+    };
+
+    await updateTripData(trip.id, {
+      memoryBook: {
+        ...(trip?.memoryBook || {}),
+        dayImages: nextDayImages,
+      },
+    });
+  };
+
+  const removeImageForDay = async (dayNumber, imageIndex) => {
+    if (!trip) {
+      return;
+    }
+
+    const dayKey = String(dayNumber);
+    const updatedForDay = (dayImages[dayKey] || []).filter((_, idx) => idx !== imageIndex);
+    const nextDayImages = { ...dayImages, [dayKey]: updatedForDay };
+    if (updatedForDay.length === 0) {
+      delete nextDayImages[dayKey];
+    }
+
+    await updateTripData(trip.id, {
+      memoryBook: {
+        ...(trip?.memoryBook || {}),
+        dayImages: nextDayImages,
+      },
+    });
+  };
+
+  const createBook = async () => {
+    if (!trip) return;
+
+    const pages = [];
+    const totalDays = Math.max(trip.durationDays || 1, 1);
 
     setIsGenerating(true);
 
-    let stories = [];
-    if (needStory.length > 0) {
-      try {
-        const res = await fetch(`${API_BASE}/memory-book/generate-story`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            pages: needStory.map((e) => ({
-              caption: e.caption,
-              location: e.location,
-              description: e.description,
-            })),
+    for (let day = 1; day <= totalDays; day += 1) {
+      const dayKey = String(day);
+      const dayContext = getTripDayContext(day);
+      const images = dayImages[dayKey] || [];
+
+      images.forEach((image, imageIndex) => {
+        pages.push({
+          image,
+          caption: `${dayContext.dayLabel} · Memory ${imageIndex + 1}`,
+          location: dayContext.location,
+          description: '',
+          story: buildStoryText({
+            tripTitle: trip.title,
+            dayNumber: day,
+            dayContext,
+            imageIndex,
           }),
         });
-        const data = await res.json();
-        if (res.ok && data.stories) stories = data.stories;
-      } catch {
-        // Stories failed — still create book without AI text
-      }
+      });
     }
 
-    let storyIdx = 0;
-    const pages = withImages.map((entry) => {
-      const hasContext = entry.caption || entry.description;
-      const story = hasContext && stories[storyIdx] ? stories[storyIdx++] : '';
-      return {
-        image: entry.image,
-        caption: entry.caption,
-        location: entry.location,
-        description: entry.description,
-        story,
-      };
+    if (pages.length === 0) {
+      setIsGenerating(false);
+      return;
+    }
+
+    await updateTripData(trip.id, {
+      memoryBook: {
+        ...(trip?.memoryBook || {}),
+        generatedPages: pages,
+        generatedAt: new Date().toISOString(),
+      },
     });
 
     setBookPages(pages);
     setIsGenerating(false);
     setStep('book');
   };
+
+  if (!trip) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center px-6">
+        <h2 className="text-2xl font-bold text-slate-900">Trip not found for Memory Book</h2>
+        <button
+          type="button"
+          onClick={() => navigate('/dashboard')}
+          className="px-5 py-3 rounded-xl bg-amber-600 text-white font-bold hover:bg-amber-700"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   if (step === 'book' && bookPages.length > 0) {
     return (
@@ -767,5 +834,14 @@ export default function MemoryBook() {
     );
   }
 
-  return <SetupStep entries={entries} setEntries={setEntries} onCreateBook={createBook} isGenerating={isGenerating} />;
+  return (
+    <SetupStep
+      trip={trip}
+      dayImages={dayImages}
+      onAddImagesForDay={addImagesForDay}
+      onRemoveImageForDay={removeImageForDay}
+      onCreateBook={createBook}
+      isGenerating={isGenerating}
+    />
+  );
 }

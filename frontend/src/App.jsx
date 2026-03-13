@@ -94,6 +94,17 @@ const App = () => {
       />
 
       <Route
+        path="/groups"
+        element={
+          <ProtectedRoute>
+            <DashboardLayout>
+              <GroupTrips />
+            </DashboardLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
         path="/saved-places"
         element={
           <ProtectedRoute>

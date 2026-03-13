@@ -436,10 +436,10 @@ export default function Stage4Discover({
 
       {/* Header */}
       <div className="mb-6">
-        <h3 className="bebas-neue text-4xl text-white mb-2 tracking-wide">
+        <h3 className="bebas-neue text-4xl text-slate-900 mb-2 tracking-wide">
           YOUR DISCOVERIES
         </h3>
-        <p className="text-white/60 text-sm font-light tracking-wide">
+        <p className="text-slate-600 text-sm font-light tracking-wide">
           Based on your vibe — here are the iconic places and experiences awaiting you.
         </p>
       </div>
@@ -464,15 +464,15 @@ export default function Stage4Discover({
       )}
 
       {tripData.cities.length === 0 ? (
-        <div className="text-center py-20 bg-white/[0.02] rounded-3xl border border-dashed border-white/10">
+        <div className="text-center py-20 bg-amber-50/60 rounded-3xl border border-dashed border-amber-200">
           <span className="text-5xl mb-4 block">🔍</span>
-          <p className="playfair-display italic text-white/40 text-xl">
+          <p className="playfair-display italic text-slate-500 text-xl">
             Select cities to uncover local secrets
           </p>
         </div>
       ) : (
 
-        <div className="space-y-12 max-h-[480px] overflow-y-auto pr-4 no-scrollbar">
+        <div className="space-y-12 max-h-120 overflow-y-auto pr-4 no-scrollbar">
 
           {tripData.cities.map(cityId => {
 
@@ -501,12 +501,12 @@ export default function Stage4Discover({
                       {stateInfo?.name}
                     </p>
 
-                    <h4 className="text-white text-xl font-bold tracking-tight uppercase">
+                    <h4 className="text-slate-900 text-xl font-bold tracking-tight uppercase">
                       {cityInfo.name}
                     </h4>
                   </div>
 
-                  <div className="flex-1 h-[1px] bg-gradient-to-r from-white/20 to-transparent" />
+                  <div className="flex-1 h-px bg-linear-to-r from-amber-200 to-transparent" />
                 </div>
 
                 {/* Places Grid */}
@@ -532,7 +532,7 @@ export default function Stage4Discover({
                         className={`group relative border rounded-2xl p-5 transition-all duration-300 text-left
                         ${isSelected
                             ? "border-[#FFC107] bg-[#FFC107]/10 scale-[1.02]"
-                            : "border-white/5 bg-[#151515] hover:border-[#FFC107]/40 hover:bg-[#1a1a1a]"
+                            : "border-slate-200 bg-white hover:border-[#FFC107]/40 hover:bg-amber-50/50"
                           }`}
                       >
 
@@ -546,14 +546,14 @@ export default function Stage4Discover({
                         <div className="flex items-start gap-4">
 
                           {/* Icon */}
-                          <div className="w-12 h-12 rounded-xl bg-white/5 group-hover:bg-[#FFC107]/10 flex items-center justify-center text-2xl shrink-0">
+                          <div className="w-12 h-12 rounded-xl bg-amber-50 group-hover:bg-[#FFC107]/10 flex items-center justify-center text-2xl shrink-0">
                             {place.emoji || "📍"}
                           </div>
 
                           <div className="min-w-0 flex-1">
 
                             <div className="flex items-center justify-between gap-2 mb-1">
-                              <p className="text-white font-bold text-sm truncate group-hover:text-[#FFC107]">
+                              <p className="text-slate-900 font-bold text-sm truncate group-hover:text-[#FFC107]">
                                 {place.name}
                               </p>
 

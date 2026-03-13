@@ -6,21 +6,136 @@ import {
   MessageCircle, Wallet, ChevronRight, Globe, UserPlus, Zap,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getGroupById, getGroupChatMessages, saveGroupChatMessages } from '../data/groupTripsData';
+import { addGroupPoolContribution, getGroupById, getGroupChatMessages, joinGroupTrip, saveGroupChatMessages } from '../data/groupTripsData';
 import { getItineraryById } from '../data/discoveryItineraries';
+import { useTrips } from '../../../context/TripContext';
+import { createTripPayloadFromGroup, getLinkedTripIdForGroup, saveLinkedTripForGroup } from '../services/groupTripJoinService.jsx';
+import { useAuth } from '../../../context/AuthContext';
+import { groupTripService } from '../api/groupTripService.jsx';
+
+const getInitials = (name = '') =>
+  String(name)
+    .split(' ')
+    .map((segment) => segment[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'US';
+
+const normalizeBackendGroup = (group, currentUserEmail) => {
+  const members = (group.members || []).map((member, index) => ({
+    id: member.user || member.email || `${group._id}-member-${index + 1}`,
+    name: member.name,
+    email: member.email,
+    avatar: getInitials(member.name),
+    role: member.role === 'organizer' ? 'organizer' : 'member',
+    online: false,
+  }));
+
+  const isAdmin = members.some(
+    (member) => member.role === 'organizer' && String(member.email || '').toLowerCase() === currentUserEmail,
+  );
+
+  return {
+    id: group._id,
+    source: 'backend',
+    name: group.name,
+    itineraryId: group.itineraryId || '',
+    destination: group.destination || 'Group Destination',
+    image: 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80',
+    startDate: group.startDate,
+    endDate: group.endDate,
+    members,
+    maxMembers: Number(group.maxMembers) || 6,
+    budget: {
+      total: Number(group.budget?.total || 0),
+      spent: Number(group.budget?.spent || 0),
+      currency: group.budget?.currency || '₹',
+      poolRaised: Number(group.budget?.poolRaised || 0),
+    },
+    userPool: {},
+    guidelines: Array.isArray(group.guidelines) ? group.guidelines : [],
+    status: group.status || 'upcoming',
+    tags: Array.isArray(group.tags) ? group.tags : [],
+    generatedPlan: group.generatedPlan || {},
+    tripData: group.tripData || {},
+    isAdmin,
+  };
+};
 
 const GroupTripDetail = () => {
   const { groupId } = useParams();
   const navigate = useNavigate();
   const containerRef = useRef(null);
   const chatEndRef = useRef(null);
-  const group = getGroupById(groupId);
-  const itinerary = group ? getItineraryById(group.itineraryId) : null;
+  const { user, token } = useAuth();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [remoteGroup, setRemoteGroup] = useState(null);
+  const currentUserEmail = (user?.email || 'demo@user.local').toLowerCase();
+
+  const group = useMemo(() => {
+    const localGroup = getGroupById(groupId);
+    if (localGroup) {
+      const isAdmin = (localGroup.members || []).some(
+        (member) => member.role === 'organizer' && String(member.email || '').toLowerCase() === currentUserEmail,
+      );
+      return {
+        ...localGroup,
+        source: localGroup.source || 'local',
+        isAdmin,
+      };
+    }
+    return remoteGroup;
+  }, [groupId, refreshKey, remoteGroup, currentUserEmail]);
+  const itinerary = useMemo(() => (group ? getItineraryById(group.itineraryId) : null), [group]);
+  const { createTrip, getTripById } = useTrips();
 
   const [activeTab, setActiveTab] = useState('chat');
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinError, setJoinError] = useState('');
+  const [poolInput, setPoolInput] = useState('0');
+  const [isAddingPool, setIsAddingPool] = useState(false);
   const currentUser = 'You';
+  const currentUserName = user?.name || 'You';
+
+  const linkedTripId = useMemo(() => {
+    if (!group) return '';
+    return getLinkedTripIdForGroup(group.id);
+  }, [group]);
+
+  const linkedTrip = linkedTripId ? getTripById(linkedTripId) : null;
+
+  useEffect(() => {
+    let active = true;
+
+    const loadRemoteGroup = async () => {
+      if (!token) {
+        setRemoteGroup(null);
+        return;
+      }
+
+      try {
+        const groups = await groupTripService.fetchMine(token);
+        if (!active) return;
+        const matched = groups.find((entry) => String(entry._id) === String(groupId));
+        if (matched) {
+          setRemoteGroup(normalizeBackendGroup(matched, currentUserEmail));
+          return;
+        }
+        setRemoteGroup(null);
+      } catch {
+        if (active) {
+          setRemoteGroup(null);
+        }
+      }
+    };
+
+    loadRemoteGroup();
+    return () => {
+      active = false;
+    };
+  }, [groupId, refreshKey, token, currentUserEmail]);
 
   useEffect(() => {
     if (group) {
@@ -66,6 +181,84 @@ const GroupTripDetail = () => {
     return Math.min(100, Math.round((group.budget.spent / group.budget.total) * 100));
   }, [group]);
 
+  const handleJoinGroup = async () => {
+    if (!group) {
+      return;
+    }
+
+    if (group.isAdmin) {
+      setJoinError('You are the admin of this group and cannot join again.');
+      return;
+    }
+
+    setJoinError('');
+
+    if (linkedTrip?.id) {
+      navigate(`/trip/${linkedTrip.id}`);
+      return;
+    }
+
+    setIsJoining(true);
+    try {
+      if (group.source === 'backend') {
+        if (!token) {
+          setJoinError('Please login to join this group.');
+          return;
+        }
+
+        await groupTripService.join(token, group.id, Number(poolInput) || 0);
+        setRefreshKey((value) => value + 1);
+        setJoinError('Joined successfully.');
+        return;
+      }
+
+      if (!itinerary) {
+        setJoinError('This group does not have a linked public itinerary to open yet, but you can still join from Group Trips list.');
+        return;
+      }
+
+      const joinedGroup = joinGroupTrip(group.id, {
+        name: currentUserName,
+        email: currentUserEmail,
+        poolContribution: Number(poolInput) || 0,
+      });
+
+      const createdTrip = await createTrip(createTripPayloadFromGroup(joinedGroup, itinerary));
+      if (!createdTrip?.id) {
+        setJoinError('Unable to join this group right now. Please try again.');
+        return;
+      }
+      saveLinkedTripForGroup(group.id, createdTrip.id);
+      setRefreshKey((value) => value + 1);
+      navigate(`/trip/${createdTrip.id}`);
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleAddPool = async () => {
+    if (!group) {
+      return;
+    }
+    setIsAddingPool(true);
+    try {
+      if (group.source === 'backend') {
+        if (!token) {
+          return;
+        }
+        await groupTripService.addPool(token, group.id, Number(poolInput) || 0);
+      } else {
+      addGroupPoolContribution(group.id, {
+        email: currentUserEmail,
+        amount: Number(poolInput) || 0,
+      });
+      }
+      setRefreshKey((value) => value + 1);
+    } finally {
+      setIsAddingPool(false);
+    }
+  };
+
   if (!group) {
     return (
       <div className="max-w-3xl mx-auto py-16 text-center">
@@ -95,9 +288,9 @@ const GroupTripDetail = () => {
       </button>
 
       <header className="gd-block mb-8">
-        <div className="relative rounded-[2rem] overflow-hidden h-48">
+        <div className="relative rounded-4xl overflow-hidden h-48">
           <img src={group.image} alt={group.name} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
           <div className="absolute bottom-6 left-6 right-6 text-white">
             <h1 className="text-3xl font-black">{group.name}</h1>
             <div className="flex items-center gap-4 mt-2 text-sm opacity-90 flex-wrap">
@@ -134,7 +327,7 @@ const GroupTripDetail = () => {
                 initial={{ opacity: 1, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 1, y: -10 }}
-                className="gd-block bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden"
+                className="gd-block bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden"
               >
                 <div className="p-4 border-b border-slate-100 flex items-center gap-2">
                   <MessageCircle size={18} className="text-blue-600" />
@@ -196,7 +389,7 @@ const GroupTripDetail = () => {
                 initial={{ opacity: 1, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 1, y: -10 }}
-                className="gd-block bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6"
+                className="gd-block bg-white rounded-4xl border border-slate-100 shadow-sm p-6"
               >
                 <div className="flex items-center gap-2 mb-6">
                   <Shield size={18} className="text-blue-600" />
@@ -229,7 +422,7 @@ const GroupTripDetail = () => {
                 initial={{ opacity: 1, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 1 ,y: -10 }}
-                className="gd-block bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6"
+                className="gd-block bg-white rounded-4xl border border-slate-100 shadow-sm p-6"
               >
                 <div className="flex items-center gap-2 mb-6">
                   <Globe size={18} className="text-blue-600" />
@@ -281,7 +474,7 @@ const GroupTripDetail = () => {
                 initial={{ opacity: 1, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 1 ,y: -10 }}
-                className="gd-block bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6"
+                className="gd-block bg-white rounded-4xl border border-slate-100 shadow-sm p-6"
               >
                 <div className="flex items-center gap-2 mb-6">
                   <Wallet size={18} className="text-blue-600" />
@@ -309,6 +502,16 @@ const GroupTripDetail = () => {
                       <p className="font-bold">{group.budget.currency}{(group.budget.total - group.budget.spent).toLocaleString()}</p>
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="p-3 bg-blue-500/15 rounded-xl border border-blue-300/25">
+                      <p className="text-[9px] uppercase font-bold text-blue-200">Pool Raised</p>
+                      <p className="font-bold">{group.budget.currency}{Number(group.budget.poolRaised || 0).toLocaleString()}</p>
+                    </div>
+                    <div className="p-3 bg-amber-500/15 rounded-xl border border-amber-300/25">
+                      <p className="text-[9px] uppercase font-bold text-amber-100">Your Pool</p>
+                      <p className="font-bold">{group.budget.currency}{Number(group.userPool?.[currentUserEmail] || 0).toLocaleString()}</p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="text-sm text-slate-600">
@@ -318,13 +521,49 @@ const GroupTripDetail = () => {
                   </p>
                   <p className="text-xs text-slate-400 mt-1">Split equally among {group.members.length} members</p>
                 </div>
+
+                <div className="mt-6 p-4 rounded-xl border border-slate-200 bg-slate-50">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-[0.18em] mb-2">Add Your Pool</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      value={poolInput}
+                      onChange={(event) => setPoolInput(event.target.value)}
+                      className="flex-1 px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddPool}
+                      disabled={isAddingPool}
+                      className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      {isAddingPool ? 'Adding...' : 'Add Pool'}
+                    </button>
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
         <aside className="space-y-6">
-          <div className="gd-block bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6">
+          <div className="gd-block bg-white rounded-4xl border border-slate-100 shadow-sm p-6">
+            <button
+              type="button"
+              onClick={handleJoinGroup}
+              disabled={isJoining || group.isAdmin || (!linkedTrip && spotsLeft <= 0)}
+              className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {linkedTrip ? 'Open In My Trips' : group.isAdmin ? 'You are Admin' : isJoining ? 'Joining Group...' : 'Join Group'}
+            </button>
+            {linkedTrip ? (
+              <p className="text-xs text-green-600 font-semibold mt-2">Already linked to your trip workspace.</p>
+            ) : null}
+            {joinError ? <p className="text-xs text-red-500 font-semibold mt-2">{joinError}</p> : null}
+          </div>
+
+          <div className="gd-block bg-white rounded-4xl border border-slate-100 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-slate-900 flex items-center gap-2">
                 <Users size={16} className="text-blue-600" />
@@ -367,7 +606,7 @@ const GroupTripDetail = () => {
             )}
           </div>
 
-          <div className="gd-block bg-white rounded-[2rem] border border-slate-100 shadow-sm p-6">
+          <div className="gd-block bg-white rounded-4xl border border-slate-100 shadow-sm p-6">
             <h3 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
               <Zap size={16} className="text-amber-500" />
               Quick Info

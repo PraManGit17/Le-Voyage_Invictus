@@ -1,10 +1,36 @@
 import { useEffect, useState, useRef } from "react";
 
-export default function GeneratedItinerary({ onReset }) {
+const normalizeDishName = (value = "") =>
+  value
+    .split(/\s+/)
+    .filter(Boolean)
+    .filter((word, index, source) => index === 0 || word.toLowerCase() !== source[index - 1].toLowerCase())
+    .join(" ")
+    .trim();
+
+const dedupeFoods = (foods = []) =>
+  Array.from(
+    foods.reduce((dishMap, item) => {
+      const dish = normalizeDishName(item?.dish || "");
+      const key = dish.toLowerCase();
+
+      if (!key || dishMap.has(key)) {
+        return dishMap;
+      }
+
+      dishMap.set(key, { ...item, dish });
+      return dishMap;
+    }, new Map()).values()
+  );
+
+export default function GeneratedItinerary({ onReset, onSaveToDashboard, onConfirmAndBook, isPersistingTrip }) {
   const [loading, setLoading] = useState(true);
   const [itinerary, setItinerary] = useState(null);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [chatInput, setChatInput] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
   const [messages, setMessages] = useState([
     { role: "assistant", content: "Your journey is ready. How would you like to fine-tune it?" }
   ]);
@@ -31,6 +57,48 @@ export default function GeneratedItinerary({ onReset }) {
       return () => clearInterval(qInterval);
     }
   }, [loading, itinerary]);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages]);
+
+  const handleSave = async () => {
+    if (!onSaveToDashboard) {
+      return;
+    }
+
+    setIsSaving(true);
+    setStatusMessage("");
+
+    try {
+      const trip = await onSaveToDashboard();
+
+      if (trip?.id) {
+        setStatusMessage("Itinerary saved to the dashboard workspace list.");
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleConfirm = async () => {
+    if (!onConfirmAndBook) {
+      return;
+    }
+
+    setIsConfirming(true);
+    setStatusMessage("");
+
+    try {
+      const trip = await onConfirmAndBook();
+
+      if (trip?.id) {
+        setStatusMessage("Workspace created successfully. Opening your dashboard.");
+      }
+    } finally {
+      setIsConfirming(false);
+    }
+  };
 
   const handleSendMessage = async () => {
 
@@ -91,7 +159,7 @@ export default function GeneratedItinerary({ onReset }) {
 
   if (loading) {
     return (
-      <div className="h-screen bg-[#0A0A0A] flex items-center justify-center bebas-neue text-4xl text-white">
+      <div className="h-screen bg-[#f5efe6] flex items-center justify-center bebas-neue text-4xl text-slate-900">
         INITIALIZING VOYAGE...
       </div>
     );
@@ -102,49 +170,106 @@ export default function GeneratedItinerary({ onReset }) {
   const suggestions = itinerary?.activityPlan?.additionalSuggestions || [];
 
   return (
-    <section className="h-[1200px] bg-[#0A0A0A] text-[#E0E0E0] inter flex flex-col p-6 gap-6">
+    <section className="min-h-screen bg-[#f5efe6] text-slate-800 inter flex flex-col p-4 md:p-6 gap-6">
 
-      {/* TOP BAR */}
-      <div className="flex justify-between items-center px-2">
-        <h1 className="bebas-neue text-4xl tracking-tighter text-white">
-          TRIP <span className="text-[#FFC107]">MANIFEST</span>
-        </h1>
+      <div className="rounded-4xl border border-amber-100 bg-white px-5 py-4 shadow-xl shadow-slate-200/60">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="bebas-neue text-4xl tracking-tighter text-slate-900">
+              TRIP <span className="text-[#FFC107]">MANIFEST</span>
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Review the generated plan, save it as a workspace, or confirm it directly into the dashboard.
+            </p>
+          </div>
 
-        <div className="flex gap-3">
-          <button
-            onClick={onReset}
-            className="px-4 py-2 border border-red-400 rounded-lg text-[10px] uppercase font-bold text-white/40 hover:bg-red-500/10 hover:text-red-500 transition-all"
-          >
-            Discard
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={onReset}
+              className="rounded-lg border border-red-300 px-4 py-2 text-[10px] font-bold uppercase text-red-500 transition-all hover:bg-red-500/10"
+            >
+              Discard
+            </button>
 
-          <button className="px-6 py-2 border border-white/70 rounded-lg text-[10px] uppercase font-bold hover:bg-white/5 transition-all">
-            Save
-          </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving || isPersistingTrip}
+              className="rounded-lg border border-amber-300 px-6 py-2 text-[10px] font-bold uppercase text-slate-700 transition-all hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSaving || isPersistingTrip ? "Saving..." : "Save to Dashboard"}
+            </button>
 
-          <button className="px-6 py-2 bg-[#FFC107] rounded-lg text-[10px] uppercase font-black text-black shadow-lg">
-            Confirm & Book
-          </button>
+            <button
+              onClick={handleConfirm}
+              disabled={isConfirming || isPersistingTrip}
+              className="rounded-lg bg-[#FFC107] px-6 py-2 text-[10px] font-black uppercase text-black shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {isConfirming ? "Confirming..." : "Confirm & Book"}
+            </button>
+          </div>
         </div>
+
+        {statusMessage ? (
+          <p className="mt-4 border-t border-amber-100 pt-4 text-sm font-medium text-[#FFC107]">{statusMessage}</p>
+        ) : null}
       </div>
 
-      {/* MAIN GRID */}
-      <div className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 xl:grid-cols-12 gap-6 overflow-hidden">
 
-        {/* LEFT COLUMN */}
-        <div className="col-span-8 flex flex-col gap-6 overflow-hidden">
+        <div className="xl:col-span-8 grid grid-cols-1 xl:grid-cols-12 gap-6 overflow-hidden">
+          <div className="xl:col-span-4 h-100 xl:h-full bg-white border border-amber-100 rounded-2xl flex flex-col overflow-hidden shadow-sm">
 
-          {/* ITINERARY */}
-          <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
+            <div className="px-6 py-3 border-b border-amber-100 bg-amber-50 flex items-center gap-3">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                Le-Voyage Guide
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
+              {messages.map((msg, i) => (
+                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                  <div
+                    className={`max-w-[88%] p-4 rounded-2xl text-xs ${msg.role === "user"
+                      ? "bg-[#FFC107] text-black font-bold"
+                      : "bg-amber-50 border border-amber-100 text-slate-700 italic"
+                      }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              <div ref={chatEndRef} />
+            </div>
+
+            <div className="p-4 bg-[#fffaf2] flex gap-4 border-t border-amber-100">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Invite changes to your itinerary..."
+                className="flex-1 bg-white border border-amber-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#FFC107]/50"
+              />
+
+              <button
+                onClick={handleSendMessage}
+                className="px-5 bg-[#FFC107] text-black font-black uppercase text-[10px] rounded-xl"
+              >
+                Update
+              </button>
+            </div>
+          </div>
+
+          <div className="xl:col-span-8 overflow-y-auto no-scrollbar space-y-6">
             {plan?.days?.map((day, idx) => (
-              <div key={idx} className="bg-[#111111] border border-white/10 rounded-2xl overflow-hidden">
+              <div key={idx} className="bg-white border border-amber-100 rounded-2xl overflow-hidden shadow-sm">
 
-                <div className="bg-white/5 px-8 py-4 border-b border-white/10 flex justify-between items-center">
+                <div className="bg-amber-50 px-8 py-4 border-b border-amber-100 flex justify-between items-center">
                   <h3 className="bebas-neue text-3xl tracking-wide text-[#FFC107]">
                     DAY {day.day} • {day.city}
                   </h3>
 
-                  <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                     {day.date}
                   </span>
                 </div>
@@ -159,18 +284,18 @@ export default function GeneratedItinerary({ onReset }) {
 
                       <div className="flex-1 pb-8 border-l border-white/10 pl-8 relative last:pb-0">
 
-                        <div className="absolute -left-[5px] top-2 w-2 h-2 rounded-full bg-white/20 group-hover:bg-[#FFC107]" />
+                        <div className="absolute -left-1.5 top-2 h-2 w-2 rounded-full bg-white/20 group-hover:bg-[#FFC107]" />
 
-                        <h4 className="text-lg font-bold text-white mb-1 uppercase tracking-tight">
+                        <h4 className="text-lg font-bold text-slate-900 mb-1 uppercase tracking-tight">
                           {act.activity}
                         </h4>
 
-                        <p className="text-sm text-white/40 italic mb-4">
+                        <p className="text-sm text-slate-500 italic mb-4">
                           {act.location} • {act.duration}
                         </p>
 
-                        <div className="bg-white/[0.03] border border-white/5 p-4 rounded-xl">
-                          <p className="text-xs text-white/60 leading-relaxed">
+                        <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-4">
+                          <p className="text-xs text-slate-600 leading-relaxed">
                             <span className="text-[#FFC107] font-bold uppercase text-[10px] mr-2">
                               Pro Tip:
                             </span>
@@ -184,17 +309,17 @@ export default function GeneratedItinerary({ onReset }) {
                 </div>
 
                 {/* FOOD + STAY */}
-                <div className="grid grid-cols-2 border-t border-white/10 bg-white/[0.01]">
+                <div className="grid grid-cols-2 border-t border-amber-100 bg-[#fffaf2]">
 
                   <div className="p-6 border-r border-white/10">
                     <p className="text-[10px] font-black text-[#FFC107] uppercase mb-2">
                       Must Try Food
                     </p>
 
-                    {day.foodsToTry?.map((f, i) => (
-                      <p key={i} className="text-sm font-bold text-white/80">
+                    {dedupeFoods(day.foodsToTry).map((f, i) => (
+                      <p key={i} className="text-sm font-bold text-slate-800">
                         {f.dish}
-                        <span className="text-white/20 font-light">
+                        <span className="text-slate-400 font-light">
                           {" "}— {f.description}
                         </span>
                       </p>
@@ -205,7 +330,7 @@ export default function GeneratedItinerary({ onReset }) {
                     <p className="text-[10px] font-black text-[#FFC107] uppercase mb-2">
                       Neighborhood Stay
                     </p>
-                    <p className="text-sm font-bold text-white/80">
+                    <p className="text-sm font-bold text-slate-800">
                       {day.suggestedStayArea}
                     </p>
                   </div>
@@ -215,91 +340,43 @@ export default function GeneratedItinerary({ onReset }) {
               </div>
             ))}
           </div>
-
-          {/* CHATBOT */}
-          <div className="h-[400px] bg-[#111111] border border-white/10 rounded-2xl flex flex-col overflow-hidden shadow-2xl">
-
-            <div className="px-6 py-3 border-b border-white/10 bg-white/5 flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/50">
-                Le-Voyage Guide
-              </p>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 no-scrollbar">
-              {messages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                  <div
-                    className={`max-w-[50%] p-4 rounded-2xl text-xs ${msg.role === "user"
-                      ? "bg-[#FFC107] text-black font-bold"
-                      : "bg-white/5 border border-white/10 text-white/70 italic"
-                      }`}
-                  >
-                    {msg.content}
-                  </div>
-                </div>
-              ))}
-              <div ref={chatEndRef} />
-            </div>
-
-            <div className="p-4 bg-black/20 flex gap-4 border-t border-white/5">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Invite changes to your itinerary..."
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-6 py-3 text-sm focus:outline-none focus:border-[#FFC107]/50"
-              />
-
-              <button
-                onClick={handleSendMessage}
-                className="px-8 bg-[#FFC107] text-black font-black uppercase text-[10px] rounded-xl"
-              >
-                Update Plan
-              </button>
-            </div>
-
-          </div>
         </div>
 
         {/* RIGHT COLUMN */}
-        <div className="col-span-4 flex flex-col gap-6 overflow-hidden">
+        <div className="xl:col-span-4 flex flex-col gap-6 overflow-hidden">
 
-          {/* SUGGESTIONS */}
-          <div className="flex-1 bg-[#111111] border border-white/10 rounded-2xl p-6 overflow-y-auto no-scrollbar">
+          <div className="flex-1 bg-white border border-amber-100 rounded-2xl p-6 overflow-y-auto no-scrollbar shadow-sm">
             <h4 className="bebas-neue text-2xl text-[#FFC107] mb-6 tracking-widest border-b border-white/5 pb-2">
               CURATED ADDITIONS
             </h4>
 
             <div className="space-y-6">
               {suggestions.map((s, i) => (
-                <div key={i} className="p-4 border border-white/5 rounded-xl bg-white/[0.02]">
-                  <p className="text-xs font-black text-white uppercase">{s.place}</p>
+                <div key={i} className="rounded-xl border border-amber-100 bg-amber-50/40 p-4">
+                  <p className="text-xs font-black text-slate-900 uppercase">{s.place}</p>
                   <p className="text-[9px] text-[#FFC107] uppercase mb-2">{s.city}</p>
-                  <p className="text-[11px] text-white/40">{s.description}</p>
+                  <p className="text-[11px] text-slate-500">{s.description}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* ADVISORIES */}
-          <div className="flex-1 bg-[#111111] border border-white/10 rounded-2xl p-6 overflow-y-auto no-scrollbar">
+          <div className="flex-1 bg-white border border-amber-100 rounded-2xl p-6 overflow-y-auto no-scrollbar shadow-sm">
             <h4 className="bebas-neue text-2xl text-[#FFC107] mb-6 tracking-widest border-b border-white/5 pb-2">
               ESSENTIAL PROTOCOLS
             </h4>
 
             <div className="space-y-4">
               {advisories.map((adv, i) => (
-                <div key={i} className="p-4 border border-white/5 rounded-xl bg-white/[0.02] flex gap-3 items-start">
+                <div key={i} className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50/40 p-4">
                   <span className="text-[#FFC107] text-xs">✦</span>
-                  <p className="text-[11px] text-white/50 italic">{adv.tip}</p>
+                  <p className="text-[11px] text-slate-500 italic">{adv.tip}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* MAP PLACEHOLDER */}
-          <div className="h-[300px] bg-[#111111] border border-white/10 rounded-2xl flex items-center justify-center text-white/30 text-sm">
+          <div className="h-75 bg-white border border-amber-100 rounded-2xl flex items-center justify-center text-slate-400 text-sm shadow-sm">
             MAP VIEW (Coming Soon)
           </div>
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { gsap } from 'gsap';
-import { Clock, Sparkles, Wallet, MapPin, Save, Navigation, Users, NotebookText } from 'lucide-react';
+import { Clock, Sparkles, Wallet, MapPin, Save, Navigation, Users, NotebookText, Camera, BookOpen, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import TimelineDay from '../components/workspace/TimelineDay';
 import RouteBudgetTracker from '../components/workspace/RouteBudgetTracker';
@@ -15,7 +15,7 @@ const TripWorkspace = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const containerRef = useRef(null);
-  const { getTripById, updateTripNotes, isLoading } = useTrips();
+  const { getTripById, updateTripNotes, updateTripData, isLoading } = useTrips();
   const trip = getTripById(tripId);
 
   const [activeDay, setActiveDay] = useState(1);
@@ -29,16 +29,53 @@ const TripWorkspace = () => {
     return getItineraryById(trip.recommendedItineraryId);
   }, [trip?.recommendedItineraryId]);
 
+  const generatedDayData = useMemo(() => {
+    if (!trip?.generatedPlan?.activityPlan?.days?.length) {
+      return null;
+    }
+    return trip.generatedPlan.activityPlan.days.find((d) => Number(d.day) === activeDay) || null;
+  }, [trip?.generatedPlan?.activityPlan?.days, activeDay]);
+
   const currentDayPlaces = useMemo(() => {
-    if (!linkedItinerary) return [];
-    const dayData = linkedItinerary.days.find((d) => d.day === activeDay);
-    return dayData?.places || [];
-  }, [linkedItinerary, activeDay]);
+    if (linkedItinerary) {
+      const dayData = linkedItinerary.days.find((d) => Number(d.day) === activeDay);
+      return dayData?.places || [];
+    }
+
+    if (!generatedDayData) {
+      return [];
+    }
+
+    return (generatedDayData.activities || []).map((activity, index) => ({
+      id: `generated-${activeDay}-${index + 1}`,
+      name: activity.activity || `Stop ${index + 1}`,
+      title: activity.activity || `Stop ${index + 1}`,
+      description: activity.tips || `Explore ${activity.location || 'this location'} at ${activity.time || 'a flexible time'}.`,
+      address: activity.location || generatedDayData.city || 'Address not specified',
+      duration: activity.duration || 'Flexible duration',
+      bestTime: activity.time || activity.period || 'Anytime',
+      entryFee: activity.cost || 'Included',
+      highlights: [activity.type, activity.period].filter(Boolean),
+      tips: activity.tips ? [activity.tips] : [],
+      placeId: `generated-${activeDay}-${index + 1}`,
+    }));
+  }, [linkedItinerary, generatedDayData, activeDay]);
 
   const selectedPlace = useMemo(() => {
     if (!currentDayPlaces.length) return null;
     return currentDayPlaces.find((p) => p.id === selectedPlaceId) || currentDayPlaces[0];
   }, [currentDayPlaces, selectedPlaceId]);
+
+  const mappablePlaces = useMemo(
+    () => currentDayPlaces.filter((place) => Number.isFinite(place?.lat) && Number.isFinite(place?.lng)),
+    [currentDayPlaces],
+  );
+
+  const activeItineraryForDetails = linkedItinerary || trip?.generatedPlan?.activityPlan || null;
+  const selectedMappablePlace = useMemo(() => {
+    if (!mappablePlaces.length) return null;
+    return mappablePlaces.find((place) => place.id === selectedPlace?.id) || mappablePlaces[0];
+  }, [mappablePlaces, selectedPlace]);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -79,10 +116,114 @@ const TripWorkspace = () => {
     setIsSaving(false);
   };
 
+  const getDayImages = (dayNumber) => {
+    const key = String(dayNumber);
+    return trip?.memoryBook?.dayImages?.[key] || [];
+  };
+
+  const handleAddDayImages = async (dayNumber, files) => {
+    if (!trip || !Array.isArray(files) || files.length === 0) {
+      return;
+    }
+
+    const dayKey = String(dayNumber);
+    const existing = getDayImages(dayNumber);
+    const remainingSlots = Math.max(0, 2 - existing.length);
+    if (remainingSlots === 0) {
+      return;
+    }
+
+    const validFiles = files
+      .filter((file) => file?.type?.startsWith('image/') && file.size <= 10 * 1024 * 1024)
+      .slice(0, remainingSlots);
+
+    if (validFiles.length === 0) {
+      return;
+    }
+
+    const encodedImages = await Promise.all(
+      validFiles.map(
+        (file) => new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(file);
+        }),
+      ),
+    );
+
+    const newImages = encodedImages.filter(Boolean);
+    if (newImages.length === 0) {
+      return;
+    }
+
+    const nextDayImages = {
+      ...(trip?.memoryBook?.dayImages || {}),
+      [dayKey]: [...existing, ...newImages].slice(0, 2),
+    };
+
+    await updateTripData(trip.id, {
+      memoryBook: {
+        ...(trip?.memoryBook || {}),
+        dayImages: nextDayImages,
+      },
+    });
+  };
+
+  const handleRemoveDayImage = async (dayNumber, imageIndex) => {
+    if (!trip) {
+      return;
+    }
+
+    const dayKey = String(dayNumber);
+    const current = getDayImages(dayNumber);
+    const updatedForDay = current.filter((_, idx) => idx !== imageIndex);
+    const nextDayImages = {
+      ...(trip?.memoryBook?.dayImages || {}),
+      [dayKey]: updatedForDay,
+    };
+
+    if (updatedForDay.length === 0) {
+      delete nextDayImages[dayKey];
+    }
+
+    await updateTripData(trip.id, {
+      memoryBook: {
+        ...(trip?.memoryBook || {}),
+        dayImages: nextDayImages,
+      },
+    });
+  };
+
   const handleSelectPlace = (placeId) => {
     setSelectedPlaceId(placeId);
     setDrawerOpen(true);
   };
+
+  const handleNavigatePlace = (direction) => {
+    if (!currentDayPlaces.length) {
+      return;
+    }
+
+    const selectedIndex = currentDayPlaces.findIndex((place) => place.id === selectedPlace?.id);
+    const currentIndex = selectedIndex >= 0 ? selectedIndex : 0;
+    const nextIndex = direction === 'next'
+      ? (currentIndex + 1) % currentDayPlaces.length
+      : (currentIndex - 1 + currentDayPlaces.length) % currentDayPlaces.length;
+
+    setSelectedPlaceId(currentDayPlaces[nextIndex].id);
+  };
+
+  useEffect(() => {
+    if (!currentDayPlaces.length) {
+      setSelectedPlaceId('');
+      return;
+    }
+
+    if (!selectedPlaceId || !currentDayPlaces.some((place) => place.id === selectedPlaceId)) {
+      setSelectedPlaceId(currentDayPlaces[0].id);
+    }
+  }, [currentDayPlaces, selectedPlaceId]);
 
   if (isLoading) {
     return (
@@ -130,7 +271,15 @@ const TripWorkspace = () => {
           </div>
 
           <div className="flex gap-4">
-            <button className="px-8 py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-bold flex items-center gap-3 shadow-lg hover:shadow-amber-500/30 transition-all hover:scale-105">
+            <button
+              type="button"
+              onClick={() => navigate(`/memory-book?tripId=${trip.id}`)}
+              className="px-6 py-4 bg-white border-2 border-amber-300 text-amber-800 rounded-2xl font-bold flex items-center gap-3 shadow-sm hover:bg-amber-50 transition-all hover:scale-105"
+            >
+              <BookOpen size={20} />
+              Create Book
+            </button>
+            <button className="px-8 py-4 bg-linear-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-bold flex items-center gap-3 shadow-lg hover:shadow-amber-500/30 transition-all hover:scale-105">
               <Sparkles size={20} />
               Optimize with AI
             </button>
@@ -149,13 +298,64 @@ const TripWorkspace = () => {
                   onClick={() => setActiveDay(day)}
                   className={`px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap shadow-sm ${
                     activeDay === day
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-105'
+                      ? 'bg-linear-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-105'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:scale-102'
                   }`}
                 >
                   Day {day}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="workspace-block bg-white rounded-2xl border-2 border-slate-300 p-6 shadow-lg">
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Camera size={18} className="text-amber-600" />
+                Day {activeDay} Memories
+              </h3>
+              <label className="px-4 py-2 rounded-xl bg-amber-600 text-white text-sm font-bold cursor-pointer hover:bg-amber-700 transition-colors">
+                Add Photos
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files || []);
+                    handleAddDayImages(activeDay, files);
+                    event.target.value = '';
+                  }}
+                />
+              </label>
+            </div>
+
+            <p className="text-xs text-slate-500 mb-4">You can add at most 2 images for each day.</p>
+
+            <div className="grid grid-cols-2 gap-4">
+              {[0, 1].map((slotIndex) => {
+                const image = getDayImages(activeDay)[slotIndex];
+                return (
+                  <div key={slotIndex} className="relative rounded-xl border-2 border-dashed border-amber-200 bg-amber-50/50 aspect-video overflow-hidden">
+                    {image ? (
+                      <>
+                        <img src={image} alt={`Day ${activeDay} memory ${slotIndex + 1}`} className="h-full w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveDayImage(activeDay, slotIndex)}
+                          className="absolute top-2 right-2 h-8 w-8 rounded-full bg-white/90 text-red-500 flex items-center justify-center shadow hover:bg-white"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </>
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-slate-400 text-xs font-semibold">
+                        Empty slot {slotIndex + 1}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -172,7 +372,7 @@ const TripWorkspace = () => {
 
         <aside className="space-y-8">
           <div id="budget" className="workspace-block scroll-mt-24">
-            <RouteBudgetTracker itinerary={linkedItinerary} tripBudget={trip.budget} />
+            <RouteBudgetTracker itinerary={linkedItinerary || trip?.generatedPlan?.activityPlan || null} tripBudget={trip.budget} />
           </div>
 
           <div className="workspace-block bg-white rounded-3xl border-2 border-slate-300 p-8 shadow-lg">
@@ -190,7 +390,7 @@ const TripWorkspace = () => {
             <button
               onClick={handleSaveNotes}
               disabled={isSaving}
-              className="mt-6 w-full py-4 bg-gradient-to-r from-slate-800 to-slate-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:shadow-lg transition-all disabled:opacity-80 hover:scale-105"
+              className="mt-6 w-full py-4 bg-linear-to-r from-slate-800 to-slate-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:shadow-lg transition-all disabled:opacity-80 hover:scale-105"
             >
               <Save size={18} />
               {isSaving ? 'Saving...' : 'Save Notes'}
@@ -201,13 +401,13 @@ const TripWorkspace = () => {
             <div className="flex items-center gap-3 mb-6">
               <Users size={20} className="text-blue-600" />
               <h3 className="text-xl font-bold text-slate-900">Collaborators</h3>
-              {trip.groupName && <span className="ml-auto px-4 py-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-bold">{trip.groupName}</span>}
+              {trip.groupName && <span className="ml-auto px-4 py-2 rounded-full bg-linear-to-r from-blue-500 to-blue-600 text-white text-sm font-bold">{trip.groupName}</span>}
             </div>
             <div className="space-y-3">
               {(trip.collaborators?.length ? trip.collaborators : ['Trip Owner']).map((name, index) => (
                 <div key={name} className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border-2 border-slate-200 hover:border-slate-300 transition-all">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
+                    <div className="w-10 h-10 rounded-full bg-linear-to-r from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold">
                       {name.charAt(0)}
                     </div>
                     <p className="font-semibold text-slate-900">{name}</p>
@@ -220,11 +420,11 @@ const TripWorkspace = () => {
         </aside>
       </div>
 
-      {linkedItinerary && currentDayPlaces.length > 0 && (
+      {currentDayPlaces.length > 0 && (
         <div className="workspace-block mt-10 space-y-6">
           <div className="bg-white rounded-3xl border-2 border-slate-300 p-8 shadow-lg">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-linear-to-r from-blue-500 to-blue-600 flex items-center justify-center">
                 <Navigation size={24} className="text-white" />
               </div>
               <div>
@@ -240,7 +440,7 @@ const TripWorkspace = () => {
                   onClick={() => setSelectedPlaceId(place.id)}
                   className={`px-6 py-3 rounded-xl text-sm font-bold whitespace-nowrap transition-all shadow-sm ${
                     selectedPlace?.id === place.id 
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-105' 
+                      ? 'bg-linear-to-r from-blue-600 to-blue-700 text-white shadow-lg scale-105' 
                       : 'bg-slate-100 text-slate-700 hover:bg-slate-200 hover:scale-102'
                   }`}
                 >
@@ -249,22 +449,30 @@ const TripWorkspace = () => {
               ))}
             </div>
 
-            <div className="mt-4">
-              <ItineraryRouteMap
-                places={currentDayPlaces}
-                selectedPlaceId={selectedPlace?.id}
-                onSelectPlace={setSelectedPlaceId}
-              />
-            </div>
+            {mappablePlaces.length > 0 ? (
+              <div className="mt-4">
+                <ItineraryRouteMap
+                  places={mappablePlaces}
+                  selectedPlaceId={selectedPlace?.id}
+                  onSelectPlace={setSelectedPlaceId}
+                />
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
+                Map coordinates are not available for this generated itinerary yet. You can still click each stop above to view full place details.
+              </div>
+            )}
           </div>
 
-          <PlaceNavigationAssistant destination={selectedPlace} />
+          {mappablePlaces.length > 0 ? <PlaceNavigationAssistant destination={selectedMappablePlace} /> : null}
         </div>
       )}
 
       <PlaceDetailDrawer
         place={selectedPlace}
-        itinerary={linkedItinerary}
+        itinerary={activeItineraryForDetails}
+        places={currentDayPlaces}
+        onNavigate={handleNavigatePlace}
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />

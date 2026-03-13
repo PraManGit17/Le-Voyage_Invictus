@@ -8,60 +8,69 @@ const PROMPT_SUGGESTIONS = [
 ];
 
 export default function Stage7Special({ value, onChange, tripSummary, onSubmit }) {
+  const isSuggestionSelected = (suggestion) => value.toLowerCase().includes(suggestion.toLowerCase());
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 inter">
       {/* Header Section */}
-      <div className="mb-8">
-        <h3 className="bebas-neue text-4xl text-white mb-2 tracking-wide">
+      <div className="mb-8 md:mb-10">
+        <h3 className="bebas-neue text-4xl text-slate-900 mb-2 tracking-wide">
           ANY SPECIAL NOTES?
         </h3>
-        <p className="text-white/60 text-sm font-light tracking-wide">
+        <p className="text-slate-600 text-sm font-light tracking-wide">
           Tell us about your budget, companions, or any specific wishes for this journey.
         </p>
       </div>
 
-      {/* Quick Suggestions */}
-      <div className="mb-6">
-        <p className="text-[10px] font-black text-[#FFC107] uppercase tracking-[0.3em] mb-4 opacity-80">
-          Quick Suggestions — Click to add
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {PROMPT_SUGGESTIONS.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => onChange(value ? `${value}\n${s}` : s)}
-              className="text-[11px] font-bold px-4 py-2 rounded-full border border-white/10 bg-white/5 text-white/60 hover:border-[#FFC107]/50 hover:text-[#FFC107] hover:bg-[#FFC107]/5 transition-all duration-300"
-            >
-              + {s.slice(0, 35)}...
-            </button>
-          ))}
-        </div>
-      </div>
+      <div className="grid grid-cols-1 gap-8 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
+        <div className="space-y-6">
+          <div>
+            <p className="text-[10px] font-black text-[#FFC107] uppercase tracking-[0.3em] mb-4 opacity-80">
+              Quick Suggestions — Click to add
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {PROMPT_SUGGESTIONS.map((s, i) => {
+                const active = isSuggestionSelected(s);
 
-      {/* Input Area */}
-      <div className="relative mb-10 group">
-        <textarea
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="E.g. I have mild knee issues so avoid heavy trekking. Prefer clean, safe stays and vegetarian food..."
-          className="w-full h-44 bg-[#151515] text-white placeholder:text-white/20 font-light text-sm px-6 py-5 rounded-3xl border-2 border-white/5 focus:outline-none focus:border-[#FFC107]/50 focus:ring-4 focus:ring-[#FFC107]/5 transition-all resize-none shadow-inner"
-        />
-        <div className="absolute bottom-4 right-6 text-[10px] font-black text-white/10 uppercase tracking-widest pointer-events-none">
-          Personalized Notes
-        </div>
-      </div>
+                return (
+                  <button
+                    key={i}
+                    onClick={() => onChange(value ? `${value}\n${s}` : s)}
+                    className={`text-[11px] font-bold px-4 py-2 rounded-full border-2 transition-all duration-300 ${active
+                      ? "border-[#FFC107] bg-[#fff3c6] text-amber-800 shadow-[0_8px_20px_rgba(245,158,11,0.15)]"
+                      : "border-amber-200 bg-white text-slate-600 hover:border-[#FFC107]/50 hover:text-[#FFC107] hover:bg-[#FFC107]/5"
+                      }`}
+                  >
+                    + {s.slice(0, 35)}...
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-      {/* Trip Summary Card - High Contrast Glassmorphism */}
-      <div className="bg-gradient-to-br from-[#1a1a1a] to-[#111] border-2 border-white/5 rounded-3xl p-8 mb-10 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFC107]/5 blur-[60px] rounded-full" />
+          <div className="relative group">
+            <textarea
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="E.g. I have mild knee issues so avoid heavy trekking. Prefer clean, safe stays and vegetarian food..."
+              className="w-full h-56 bg-[#fffaf2] text-slate-900 placeholder:text-slate-400 font-light text-sm px-6 py-5 rounded-3xl border-2 border-amber-200 focus:outline-none focus:border-[#FFC107]/70 focus:ring-4 focus:ring-[#FFC107]/10 transition-all resize-none shadow-inner"
+            />
+            <div className="absolute bottom-4 right-6 text-[10px] font-black text-slate-300 uppercase tracking-widest pointer-events-none">
+              Personalized Notes
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-linear-to-br from-white to-[#fff8eb] border-2 border-amber-100 rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#FFC107]/10 blur-[60px] rounded-full" />
         
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-6 md:mb-8">
           <p className="bebas-neue text-2xl text-[#FFC107] tracking-widest">TRIP SUMMARY</p>
-          <div className="h-px flex-1 mx-6 bg-white/5" />
-          <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Review Selections</span>
+          <div className="h-px flex-1 mx-6 bg-amber-100" />
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Review Selections</span>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-y-8 gap-x-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4">
           {[
             { label: "States", value: tripSummary.states.length, unit: "Selected" },
             { label: "Cities", value: tripSummary.cities.length, unit: "Chosen" },
@@ -71,21 +80,22 @@ export default function Stage7Special({ value, onChange, tripSummary, onSubmit }
             { label: "Transit", value: tripSummary.travel.length, unit: "Modes" },
           ].map((item, idx) => (
             <div key={idx} className="group">
-              <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1 group-hover:text-[#FFC107] transition-colors">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1 group-hover:text-[#FFC107] transition-colors">
                 {item.label}
               </p>
-              <p className="text-white font-bold text-lg">
+              <p className="text-slate-900 font-bold text-lg">
                 {item.value > 0 ? (
                   <span className="flex items-baseline gap-1">
-                    {item.value} <span className="text-[10px] font-light text-white/40">{item.unit}</span>
+                    {item.value} <span className="text-[10px] font-light text-slate-500">{item.unit}</span>
                   </span>
                 ) : (
-                  <span className="text-white/10 italic text-sm font-light">—</span>
+                  <span className="text-slate-300 italic text-sm font-light">—</span>
                 )}
               </p>
             </div>
           ))}
         </div>
+      </div>
       </div>
 
       {/* Generate Button */}
@@ -105,10 +115,10 @@ export default function Stage7Special({ value, onChange, tripSummary, onSubmit }
         </div>
         
         {/* Animated background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
       </button>
       
-      <p className="mt-6 text-center playfair-display italic text-white/20 text-xs">
+      <p className="mt-6 text-center playfair-display italic text-slate-400 text-xs">
         Our AI will now curate routes, hotels, and timings based on these 
         {tripSummary.cities.length} destinations.
       </p>

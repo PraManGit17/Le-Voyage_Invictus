@@ -107,8 +107,182 @@ export const groupTripsData = [
 
 const CHAT_STORAGE_KEY = 'group_chat_';
 
+const CREATED_GROUPS_STORAGE_KEY = 'created_group_trips_demo_user';
+const GROUP_OVERRIDES_STORAGE_KEY = 'group_trip_overrides_demo_user';
+
+const readJson = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeJson = (key, value) => {
+  localStorage.setItem(key, JSON.stringify(value));
+};
+
+const readCreatedGroups = () => readJson(CREATED_GROUPS_STORAGE_KEY, []);
+const writeCreatedGroups = (groups) => writeJson(CREATED_GROUPS_STORAGE_KEY, groups);
+const readOverrides = () => readJson(GROUP_OVERRIDES_STORAGE_KEY, {});
+const writeOverrides = (overrides) => writeJson(GROUP_OVERRIDES_STORAGE_KEY, overrides);
+
+const mergeGroupWithOverride = (group) => {
+  const override = readOverrides()[group.id];
+  if (!override) {
+    return {
+      ...group,
+      budget: {
+        ...group.budget,
+        poolRaised: group.budget?.poolRaised || 0,
+      },
+      userPool: group.userPool || {},
+    };
+  }
+
+  return {
+    ...group,
+    ...override,
+    budget: {
+      ...group.budget,
+      ...(override.budget || {}),
+      poolRaised: override.budget?.poolRaised ?? group.budget?.poolRaised ?? 0,
+    },
+    userPool: override.userPool || group.userPool || {},
+  };
+};
+
+export const getAllGroups = () => {
+  const created = readCreatedGroups();
+  const mergedDefaults = groupTripsData.map((group) => mergeGroupWithOverride(group));
+  return [...created, ...mergedDefaults];
+};
+
 export const getGroupById = (groupId) =>
-  groupTripsData.find((g) => g.id === groupId) || null;
+  getAllGroups().find((g) => g.id === groupId) || null;
+
+export const createGroupTrip = ({
+  name,
+  destination,
+  itineraryId,
+  startDate,
+  endDate,
+  maxMembers,
+  budgetTotal,
+  tags = [],
+  guidelines = [],
+  organizerName,
+  organizerEmail,
+  organizerPool = 0,
+}) => {
+  const createdGroups = readCreatedGroups();
+  const id = `grp-custom-${Date.now()}`;
+  const organizerMember = {
+    id: `member-${Date.now()}`,
+    name: organizerName || 'You',
+    avatar: (organizerName || 'You').split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase(),
+    role: 'organizer',
+    online: true,
+    email: organizerEmail || 'demo@user.local',
+  };
+
+  const nextGroup = {
+    id,
+    name,
+    itineraryId,
+    destination,
+    image: 'https://images.unsplash.com/photo-1526772662000-3f88f10405ff?auto=format&fit=crop&q=80',
+    startDate,
+    endDate,
+    members: [organizerMember],
+    maxMembers: Number(maxMembers) || 6,
+    budget: {
+      total: Number(budgetTotal) || 0,
+      spent: 0,
+      currency: '₹',
+      poolRaised: Number(organizerPool) || 0,
+    },
+    userPool: {
+      [organizerMember.email]: Number(organizerPool) || 0,
+    },
+    guidelines,
+    status: 'upcoming',
+    tags,
+  };
+
+  writeCreatedGroups([nextGroup, ...createdGroups]);
+  return nextGroup;
+};
+
+export const joinGroupTrip = (groupId, { name, email, poolContribution = 0 }) => {
+  const group = getGroupById(groupId);
+  if (!group) {
+    throw new Error('Group not found');
+  }
+
+  const safeEmail = (email || `${name || 'user'}@demo.local`).toLowerCase();
+  const alreadyMember = (group.members || []).some((member) => (member.email || '').toLowerCase() === safeEmail);
+  if (!alreadyMember && group.members.length >= group.maxMembers) {
+    throw new Error('Group is full');
+  }
+
+  const nextMembers = alreadyMember
+    ? group.members
+    : [
+      ...group.members,
+      {
+        id: `member-${Date.now()}`,
+        name: name || 'You',
+        avatar: (name || 'You').split(' ').map((s) => s[0]).join('').slice(0, 2).toUpperCase(),
+        role: 'member',
+        online: true,
+        email: safeEmail,
+      },
+    ];
+
+  const previousContribution = Number(group.userPool?.[safeEmail] || 0);
+  const addedContribution = Number(poolContribution) || 0;
+  const nextContribution = previousContribution + addedContribution;
+
+  const nextUserPool = {
+    ...(group.userPool || {}),
+    [safeEmail]: nextContribution,
+  };
+
+  const nextPoolRaised = Object.values(nextUserPool).reduce((sum, amount) => sum + (Number(amount) || 0), 0);
+
+  const nextGroup = {
+    ...group,
+    members: nextMembers,
+    userPool: nextUserPool,
+    budget: {
+      ...group.budget,
+      poolRaised: nextPoolRaised,
+    },
+  };
+
+  const createdGroups = readCreatedGroups();
+  const createdIndex = createdGroups.findIndex((item) => item.id === groupId);
+  if (createdIndex >= 0) {
+    const updatedCreated = [...createdGroups];
+    updatedCreated[createdIndex] = nextGroup;
+    writeCreatedGroups(updatedCreated);
+  } else {
+    const overrides = readOverrides();
+    overrides[groupId] = {
+      members: nextGroup.members,
+      userPool: nextGroup.userPool,
+      budget: nextGroup.budget,
+    };
+    writeOverrides(overrides);
+  }
+
+  return nextGroup;
+};
+
+export const addGroupPoolContribution = (groupId, { email, amount }) =>
+  joinGroupTrip(groupId, { name: email?.split('@')[0] || 'You', email, poolContribution: amount });
 
 export const getGroupChatMessages = (groupId) => {
   const raw = localStorage.getItem(`${CHAT_STORAGE_KEY}${groupId}`);
